@@ -137,10 +137,13 @@ const BuyerDashboardRedesigned: React.FC = () => {
       `;
 
       const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-goog-api-key': geminiApiKey,
+          },
           body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
@@ -149,7 +152,8 @@ const BuyerDashboardRedesigned: React.FC = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Gemini API error: ${response.status}`);
+        const errText = await response.text().catch(() => '');
+        throw new Error(`Gemini API error: ${response.status} ${errText}`);
       }
 
       const data = await response.json();
