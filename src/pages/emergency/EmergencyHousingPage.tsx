@@ -23,7 +23,7 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const callGemini = async (prompt: string, apiKey: string) => {
-    // List models (v1) and pick a flash model; fallback to pro
+    // List models (v1) and pick a supported one
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
     );
@@ -36,31 +36,34 @@ const EmergencyHousingPage: React.FC = () => {
       list?.models?.map((m: any) => m.name).filter((n: string) => n) || [];
 
     const pick =
+      models.find((m) => m.includes('gemini-1.5-flash-002')) ||
+      models.find((m) => m.includes('gemini-1.5-flash-001')) ||
       models.find((m) => m.includes('gemini-1.5-flash')) ||
       models.find((m) => m.includes('gemini-1.5-pro')) ||
       models.find((m) => m.includes('gemini-pro')) ||
-      'models/gemini-1.5-flash';
+      models[0];
+
+    if (!pick) throw new Error('Gemini API error: no available models returned');
 
     const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
 
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
-        }),
-      }
-    );
+    const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': apiKey,
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+      }),
+    });
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      throw new Error(`Gemini API error: ${res.status} ${errText}`);
+      throw new Error(`Gemini API error (${modelName}): ${res.status} ${errText}`);
     }
 
     return res.json();
