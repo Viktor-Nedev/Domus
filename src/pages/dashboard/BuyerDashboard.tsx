@@ -53,7 +53,7 @@ const BuyerDashboardRedesigned: React.FC = () => {
     maxTokens = 300
   ) => {
     const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
     );
     if (!listRes.ok) {
       const errText = await listRes.text().catch(() => '');
@@ -65,17 +65,19 @@ const BuyerDashboardRedesigned: React.FC = () => {
 
     const pick =
       models.find((m) => m.includes('gemini-1.5-flash')) ||
-      models.find((m) => m.includes('gemini-1.0-pro')) ||
+      models.find((m) => m.includes('gemini-1.5-pro')) ||
+      models.find((m) => m.includes('gemini-pro')) ||
       'models/gemini-1.5-flash';
 
     const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],

@@ -23,9 +23,9 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const callGemini = async (prompt: string, apiKey: string) => {
-    // Get available models and pick flash
+    // List models (v1) and pick a flash model; fallback to pro
     const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
     );
     if (!listRes.ok) {
       const errText = await listRes.text().catch(() => '');
@@ -37,17 +37,19 @@ const EmergencyHousingPage: React.FC = () => {
 
     const pick =
       models.find((m) => m.includes('gemini-1.5-flash')) ||
-      models.find((m) => m.includes('gemini-1.0-pro')) ||
+      models.find((m) => m.includes('gemini-1.5-pro')) ||
+      models.find((m) => m.includes('gemini-pro')) ||
       'models/gemini-1.5-flash';
 
     const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
 
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
