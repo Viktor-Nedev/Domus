@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Heart, TrendingUp, MessageSquare, Search, Sparkles, Map, BarChart3, Clock, Eye } from 'lucide-react';
+import { Home, Heart, MessageSquare, Search, Sparkles, Map, BarChart3, Clock, Eye, Loader2, Globe2, LineChart as LineChartIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/db/supabase';
 import { PropertyCard } from '@/components/property/PropertyCard';
 import type { Property } from '@/types';
+import { Input } from '@/components/ui/input';
+import {
+  ChartContainer,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+import {
+  CartesianGrid,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  Tooltip,
+} from 'recharts';
 
 const BuyerDashboardRedesigned: React.FC = () => {
   const { user, profile } = useAuth();
@@ -21,6 +38,13 @@ const BuyerDashboardRedesigned: React.FC = () => {
     unreadMessages: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [countryQuery, setCountryQuery] = useState('');
+  const [priceTrend, setPriceTrend] = useState<
+    { year: number; price: number }[]
+  >([]);
+  const [trendCurrency, setTrendCurrency] = useState('€');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -78,6 +102,108 @@ const BuyerDashboardRedesigned: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const handleAiMarketSearch = async () => {
+    if (!countryQuery.trim()) {
+      setAiMessage('Въведи държава за анализ.');
+      return;
+    }
+
+    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      setAiMessage('Липсва Gemini API ключ (VITE_GEMINI_API_KEY).');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiMessage(null);
+    try {
+      const prompt = `
+        You are a real estate data assistant.
+        For the country "${countryQuery}", provide historical residential property price per square meter (average) for the last 8 years (most recent year included).
+        Respond ONLY with compact JSON:
+        {
+          "country": "<name>",
+          "currency": "€",
+          "points": [
+            {"year": 2018, "price_per_m2": 1800},
+            ...
+          ]
+        }
+        Use best available public/global index data; if specific numbers are uncertain, estimate realistic European-level prices.
+        Do not include any extra text or code fences.
+      `;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const clean = text.replace(/```json|```/g, '').trim();
+      const parsed = JSON.parse(clean);
+
+      const points = Array.isArray(parsed.points)
+        ? parsed.points
+            .map((p: any) => ({
+              year: Number(p.year),
+              price: Number(p.price_per_m2),
+            }))
+            .filter((p) => !isNaN(p.year) && !isNaN(p.price))
+        : [];
+
+      if (points.length === 0) {
+        setAiMessage('AI не върна валидни данни.');
+        setPriceTrend([]);
+        return;
+      }
+
+      setTrendCurrency(parsed.currency || '€');
+      setPriceTrend(points.sort((a, b) => a.year - b.year));
+      setAiMessage(`Показани са данни за ${parsed.country || countryQuery}.`);
+    } catch (err) {
+      console.error('AI trend error', err);
+      setAiMessage('Възникна грешка при AI заявката.');
+      setPriceTrend([]);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const yoySeries = useMemo(() => {
+    if (priceTrend.length < 2) return [];
+    return priceTrend.slice(1).map((point, idx) => {
+      const prev = priceTrend[idx].price;
+      const change = prev === 0 ? 0 : ((point.price - prev) / prev) * 100;
+      return { year: point.year, change: Number(change.toFixed(1)) };
+    });
+  }, [priceTrend]);
+
+  const latestPrice = priceTrend.at(-1)?.price;
+  const firstPrice = priceTrend[0]?.price;
+  const cagr =
+    priceTrend.length >= 2
+      ? (
+          (Math.pow(
+            (latestPrice || 0) / (firstPrice || 1),
+            1 / (priceTrend.length - 1)
+          ) -
+            1) *
+          100
+        ).toFixed(1)
+      : null;
 
   if (loading) {
     return (
@@ -147,6 +273,158 @@ const BuyerDashboardRedesigned: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* AI Market Trends */}
+        <Card className="mb-8">
+          <CardHeader className="flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle className="flex items-center gap-2 text-xl">
+                <LineChartIcon className="h-5 w-5" />
+                Market Price Trends (AI)
+              </CardTitle>
+              <Badge variant="outline" className="text-xs">
+                Powered by Gemini
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              Въведи държава, за да видиш исторически средни цени на имоти (€/m²) за последните години.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex flex-col md:flex-row gap-3">
+              <Input
+                value={countryQuery}
+                onChange={(e) => setCountryQuery(e.target.value)}
+                placeholder="напр. Germany, Bulgaria, Spain..."
+                className="h-11 md:flex-1 text-base"
+              />
+              <Button
+                onClick={handleAiMarketSearch}
+                disabled={aiLoading}
+                className="h-11 px-5"
+              >
+                {aiLoading ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Globe2 className="h-4 w-4 mr-2" />
+                )}
+                AI Analyze
+              </Button>
+            </div>
+            {aiMessage && (
+              <p className="text-sm text-muted-foreground">{aiMessage}</p>
+            )}
+
+            {priceTrend.length > 0 ? (
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="h-72">
+                    <ChartContainer
+                      config={
+                        {
+                          price: { label: '€/m²', color: 'hsl(var(--primary))' },
+                        } as ChartConfig
+                      }
+                    >
+                      <ResponsiveContainer>
+                        <LineChart data={priceTrend}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                          <XAxis dataKey="year" stroke="var(--muted-foreground)" />
+                          <YAxis
+                            dataKey="price"
+                            stroke="var(--muted-foreground)"
+                            tickFormatter={(v) => `${trendCurrency}${v}`}
+                          />
+                          <Tooltip content={<ChartTooltipContent />} />
+                          <Line
+                            type="monotone"
+                            dataKey="price"
+                            stroke="var(--color-price)"
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </div>
+                  <div className="h-60">
+                    <ChartContainer
+                      config={
+                        {
+                          change: { label: 'YoY %', color: 'hsl(var(--secondary))' },
+                        } as ChartConfig
+                      }
+                    >
+                      <ResponsiveContainer>
+                        <BarChart data={yoySeries}>
+                          <CartesianGrid strokeDasharray="3 3" className="stroke-border/50" />
+                          <XAxis dataKey="year" stroke="var(--muted-foreground)" />
+                          <YAxis tickFormatter={(v) => `${v}%`} stroke="var(--muted-foreground)" />
+                          <Tooltip
+                            content={
+                              <ChartTooltipContent
+                                labelFormatter={(v) => `Year ${v}`}
+                                formatter={(val) => [`${val}%`, 'YoY change']}
+                              />
+                            }
+                          />
+                          <Bar dataKey="change" fill="var(--color-change)" radius={[6, 6, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Latest price
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">
+                        {trendCurrency}
+                        {latestPrice?.toLocaleString() || '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">per m² (most recent year)</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        CAGR (period)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">
+                        {cagr ? `${cagr}%` : '—'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Based on first vs. latest year
+                      </p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Data points
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">{priceTrend.length}</p>
+                      <p className="text-xs text-muted-foreground">years of history</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm text-muted-foreground">
+                Няма данни за показване. Изпълни AI заявка с държава.
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Quick Actions */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
