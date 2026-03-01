@@ -46,37 +46,50 @@ const BuyerDashboardRedesigned: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
-  const callGemini = async (prompt: string, apiKey: string, temperature = 0.3, maxTokens = 300) => {
-    const models = ['gemini-1.5-flash-002', 'gemini-1.5-flash'];
-    let lastError: any = null;
+  const callGemini = async (
+    prompt: string,
+    apiKey: string,
+    temperature = 0.3,
+    maxTokens = 300
+  ) => {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    if (!listRes.ok) {
+      const errText = await listRes.text().catch(() => '');
+      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
+    }
+    const list = await listRes.json();
+    const models: string[] =
+      list?.models?.map((m: any) => m.name).filter((n: string) => n) || [];
 
-    for (const model of models) {
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': apiKey,
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature, maxOutputTokens: maxTokens },
-          }),
-        }
-      );
+    const pick =
+      models.find((m) => m.includes('gemini-1.5-flash')) ||
+      models.find((m) => m.includes('gemini-1.0-pro')) ||
+      'models/gemini-1.5-flash';
 
-      if (res.ok) {
-        return res.json();
+    const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
+
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature, maxOutputTokens: maxTokens },
+        }),
       }
+    );
 
-      lastError = { status: res.status, text: await res.text().catch(() => '') };
-      if (![404, 400].includes(res.status)) break;
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`Gemini API error: ${res.status} ${errText}`);
     }
 
-    throw new Error(
-      `Gemini API error: ${lastError?.status || 'unknown'} ${lastError?.text || ''}`.trim()
-    );
+    return res.json();
   };
 
   useEffect(() => {
