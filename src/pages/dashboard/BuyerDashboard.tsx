@@ -157,7 +157,7 @@ const BuyerDashboardRedesigned: React.FC = () => {
 
     const geminiApiKey =
       import.meta.env.VITE_GEMINI_API_KEY ||
-      'AIzaSyB0GLsmyOJfbZi3SAf3vGML_h-H8ZUNJtQ';
+      'AIzaSyAOZVXfJIuHT_PFcYGFAG1dCDXb7rRF18A';
     if (!geminiApiKey) {
       setAiMessage('Липсва Gemini API ключ (VITE_GEMINI_API_KEY).');
       return;
