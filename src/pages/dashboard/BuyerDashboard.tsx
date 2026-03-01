@@ -46,6 +46,39 @@ const BuyerDashboardRedesigned: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
+  const callGemini = async (prompt: string, apiKey: string, temperature = 0.3, maxTokens = 300) => {
+    const models = ['gemini-1.5-flash-002', 'gemini-1.5-flash'];
+    let lastError: any = null;
+
+    for (const model of models) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature, maxOutputTokens: maxTokens },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        return res.json();
+      }
+
+      lastError = { status: res.status, text: await res.text().catch(() => '') };
+      if (![404, 400].includes(res.status)) break;
+    }
+
+    throw new Error(
+      `Gemini API error: ${lastError?.status || 'unknown'} ${lastError?.text || ''}`.trim()
+    );
+  };
+
   useEffect(() => {
     if (user) {
       loadDashboardData();
@@ -136,27 +169,7 @@ const BuyerDashboardRedesigned: React.FC = () => {
         Do not include any extra text or code fences.
       `;
 
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-goog-api-key': geminiApiKey,
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 300 },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`Gemini API error: ${response.status} ${errText}`);
-      }
-
-      const data = await response.json();
+      const data = await callGemini(prompt, geminiApiKey, 0.3, 300);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
       const clean = text.replace(/```json|```/g, '').trim();
       const parsed = JSON.parse(clean);

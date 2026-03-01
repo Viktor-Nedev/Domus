@@ -22,6 +22,40 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
+  const callGemini = async (prompt: string, apiKey: string) => {
+    const models = ['gemini-1.5-flash-002', 'gemini-1.5-flash'];
+    let lastError: any = null;
+
+    for (const model of models) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        return res.json();
+      }
+
+      lastError = { status: res.status, text: await res.text().catch(() => '') };
+      // try next model on 404/400
+      if (![404, 400].includes(res.status)) break;
+    }
+
+    throw new Error(
+      `Gemini API error: ${lastError?.status || 'unknown'} ${lastError?.text || ''}`.trim()
+    );
+  };
+
   // Load ALL shelters on mount
   useEffect(() => {
     loadAllShelters();
@@ -74,27 +108,7 @@ const EmergencyHousingPage: React.FC = () => {
         User query: "${aiQuery}"
       `;
 
-      const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent',
-        {
-          method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-goog-api-key': geminiApiKey,
-          },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const errText = await response.text().catch(() => '');
-        throw new Error(`Gemini API error: ${response.status} ${errText}`);
-      }
-
-      const data = await response.json();
+      const data = await callGemini(prompt, geminiApiKey);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       let countriesFromAi: string[] = [];
