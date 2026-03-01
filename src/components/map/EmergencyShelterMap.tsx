@@ -33,9 +33,12 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [0, 20],
       zoom: 2,
-      });
+    });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.current.once('load', () => {
+      map.current?.resize();
+    });
 
     return () => {
       markers.current.forEach(marker => marker.remove());
@@ -66,16 +69,16 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       // Create custom marker element with professional styling
       const el = document.createElement('div');
       el.className = 'emergency-marker';
-      el.style.width = '36px';
-      el.style.height = '36px';
+      el.style.width = '32px';
+      el.style.height = '32px';
       el.style.cursor = 'pointer';
-      el.style.transition = 'transform 0.18s ease';
       el.style.display = 'block';
       el.style.transformOrigin = 'center bottom';
+      el.style.pointerEvents = 'auto';
       
       // Professional pin-style marker design with yellow accent
       el.innerHTML = `
-        <svg width="36" height="36" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+        <svg width="32" height="32" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" style="display: block;">
           <!-- Outer glow -->
           <circle cx="22" cy="22" r="21" fill="#D4AF37" opacity="0.15" />
           
@@ -105,15 +108,6 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
           </g>
         </svg>
       `;
-
-      // Hover effect
-      el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.06)';
-      });
-
-      el.addEventListener('mouseleave', () => {
-        el.style.transform = 'scale(1)';
-      });
 
       // Create styled popup content
       const popupContent = `
@@ -299,8 +293,10 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       const marker = new mapboxgl.Marker({
         element: el,
         anchor: 'bottom', // Bottom-center anchor for pin-style markers
-        offset: [0, -4],
+        offset: [0, -12],
         draggable: false,
+        pitchAlignment: 'map',
+        rotationAlignment: 'map',
       })
         .setLngLat([lng, lat])
         .setPopup(popup)

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Search, Shield, Home, AlertTriangle, Heart, Loader2, Bot } from 'lucide-react';
+import { MapPin, Shield, Home, AlertTriangle, Heart, Loader2, Bot } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +18,6 @@ const EmergencyHousingPage: React.FC = () => {
   const [searchCountry, setSearchCountry] = useState('all');
   const [loading, setLoading] = useState(false);
   const [relatedProperties, setRelatedProperties] = useState<Property[]>([]);
-  const [countries, setCountries] = useState<string[]>([]);
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
@@ -41,10 +40,6 @@ const EmergencyHousingPage: React.FC = () => {
       
       setAllShelters(data || []);
       setDisplayedShelters(data || []);
-      
-      // Extract unique countries
-      const uniqueCountries = Array.from(new Set(data?.map(s => s.country) || [])).sort();
-      setCountries(uniqueCountries);
       
     } catch (error) {
       console.error('Error loading shelters:', error);
@@ -136,43 +131,6 @@ const EmergencyHousingPage: React.FC = () => {
     }
   };
 
-  const handleSearch = async () => {
-    if (searchCountry === 'all') {
-      setDisplayedShelters(allShelters);
-      setRelatedProperties([]);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      // Filter shelters by country - show ALL results
-      const filteredShelters = allShelters.filter(shelter => 
-        shelter.country.toLowerCase() === searchCountry.toLowerCase()
-      );
-
-      setDisplayedShelters(filteredShelters);
-
-      // Load related properties
-      const { data: propertyData, error: propertyError } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('status', 'active')
-        .ilike('country', searchCountry)
-        .order('domus_score', { ascending: false })
-        .limit(6);
-
-      if (!propertyError) {
-        setRelatedProperties(propertyData || []);
-      }
-
-    } catch (error) {
-      console.error('Error searching:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container py-8 max-w-[1400px]">
@@ -216,48 +174,25 @@ const EmergencyHousingPage: React.FC = () => {
           </Badge>
         </div>
 
-        {/* Search Section */}
+        {/* AI Search Section (sole search) */}
         <Card className="mb-6 border-primary/20 shadow-md">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center gap-3 text-xl">
-              <Search className="h-6 w-6" />
-              Search Emergency Housing by Country
+              <Bot className="h-6 w-6" />
+              AI Search for Emergency Housing
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-col gap-3">
-              <div className="flex gap-3">
-                <Select value={searchCountry} onValueChange={setSearchCountry}>
-                  <SelectTrigger className="flex-1 h-12 text-base">
-                  <SelectValue placeholder="Select country..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Countries</SelectItem>
-                  {countries.map(country => (
-                    <SelectItem key={country} value={country}>{country}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-                <Button 
-                  onClick={handleSearch} 
-                  className="bg-secondary hover:bg-secondary/90 px-8 h-12 text-base"
-                  disabled={loading}
-                >
-                  {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Search className="h-5 w-5 mr-2" />}
-                  {loading ? 'Searching...' : 'Search'}
-                </Button>
-              </div>
-
               <div className="flex gap-3 items-center">
                 <Input
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
-                  placeholder="AI търсене по държава (например “find shelters in Germany”)"
+                  placeholder="Напиши държава, напр. “Find shelters in Germany”"
                   className="h-11 text-base"
                 />
                 <Button
-                  variant="outline"
-                  className="h-11 px-6 text-base border-secondary text-secondary hover:bg-secondary/10"
+                  className="h-11 px-6 text-base bg-secondary hover:bg-secondary/90"
                   onClick={handleAiSearch}
                   disabled={aiLoading}
                 >
