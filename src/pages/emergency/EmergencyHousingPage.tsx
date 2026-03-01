@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { MapPin, Search, Shield, Home, AlertTriangle, Heart } from 'lucide-react';
+import { MapPin, Search, Shield, Home, AlertTriangle, Heart, Loader2, Bot } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,9 @@ const EmergencyHousingPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [relatedProperties, setRelatedProperties] = useState<Property[]>([]);
   const [countries, setCountries] = useState<string[]>([]);
+  const [aiQuery, setAiQuery] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   // Load ALL shelters on mount
   useEffect(() => {
@@ -47,6 +50,89 @@ const EmergencyHousingPage: React.FC = () => {
       console.error('Error loading shelters:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAiSearch = async () => {
+    if (!aiQuery.trim()) {
+      setAiMessage('Въведи държава или регион за AI търсене.');
+      return;
+    }
+
+    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      setAiMessage('Липсва Gemini API ключ. Задай VITE_GEMINI_API_KEY в .env.');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiMessage(null);
+
+    try {
+      const prompt = `
+        Extract the country names mentioned in the user query.
+        Return ONLY valid country names as JSON string:
+        {"countries":["Country 1","Country 2"]}
+        If none are found, return {"countries":[]}.
+        User query: "${aiQuery}"
+      `;
+
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+      let countriesFromAi: string[] = [];
+      try {
+        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+        countriesFromAi = parsed.countries || [];
+      } catch (err) {
+        console.error('Failed to parse Gemini response', err, text);
+      }
+
+      if (countriesFromAi.length === 0) {
+        setAiMessage('AI не разпозна държава. Опитай отново.');
+        return;
+      }
+
+      // Filter shelters by the first detected country
+      const targetCountry = countriesFromAi[0];
+      setSearchCountry(targetCountry);
+
+      const filteredShelters = allShelters.filter(
+        (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
+      );
+      setDisplayedShelters(filteredShelters);
+
+      const { data: propertyData } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('status', 'active')
+        .ilike('country', targetCountry)
+        .order('domus_score', { ascending: false })
+        .limit(6);
+
+      setRelatedProperties(propertyData || []);
+      setAiMessage(`AI намери държава: ${targetCountry} (${filteredShelters.length} убежища)`);
+    } catch (error) {
+      console.error('AI search error:', error);
+      setAiMessage('Възникна проблем с AI търсенето.');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -89,59 +175,60 @@ const EmergencyHousingPage: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container py-12 max-w-[1800px]">
+      <div className="container py-8 max-w-[1400px]">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-4 mb-6">
-            <Shield className="h-16 w-16 text-primary" />
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Shield className="h-12 w-12 text-primary" />
             <div>
-              <h1 className="text-5xl font-bold gradient-text mb-2">Emergency Housing</h1>
-              <p className="text-muted-foreground text-xl">
+              <h1 className="text-4xl font-bold gradient-text mb-1">Emergency Housing</h1>
+              <p className="text-muted-foreground text-lg">
                 Find safe shelter and temporary accommodation during humanitarian crises
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-3 mb-6">
-            <Badge variant="outline" className="text-base px-4 py-2">
+          <div className="flex flex-wrap gap-2 mb-4">
+            <Badge variant="outline" className="text-sm px-3 py-1.5">
               <AlertTriangle className="h-4 w-4 mr-2" />
               War & Conflict
             </Badge>
-            <Badge variant="outline" className="text-base px-4 py-2">
+            <Badge variant="outline" className="text-sm px-3 py-1.5">
               <AlertTriangle className="h-4 w-4 mr-2" />
               Earthquake
             </Badge>
-            <Badge variant="outline" className="text-base px-4 py-2">
+            <Badge variant="outline" className="text-sm px-3 py-1.5">
               <AlertTriangle className="h-4 w-4 mr-2" />
               Flood & Natural Disasters
             </Badge>
-            <Badge variant="outline" className="text-base px-4 py-2">
+            <Badge variant="outline" className="text-sm px-3 py-1.5">
               <AlertTriangle className="h-4 w-4 mr-2" />
               Fire
             </Badge>
-            <Badge variant="outline" className="text-base px-4 py-2">
+            <Badge variant="outline" className="text-sm px-3 py-1.5">
               <Heart className="h-4 w-4 mr-2" />
               Humanitarian Crisis
             </Badge>
           </div>
 
-          <Badge variant="secondary" className="text-lg px-6 py-3">
+          <Badge variant="secondary" className="text-base px-4 py-2">
             {displayedShelters.length} Emergency Shelters {searchCountry !== 'all' ? 'Found' : 'Available Worldwide'}
           </Badge>
         </div>
 
         {/* Search Section */}
-        <Card className="mb-8 border-primary/20 shadow-lg">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center gap-3 text-2xl">
-              <Search className="h-7 w-7" />
+        <Card className="mb-6 border-primary/20 shadow-md">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <Search className="h-6 w-6" />
               Search Emergency Housing by Country
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex gap-4">
-              <Select value={searchCountry} onValueChange={setSearchCountry}>
-                <SelectTrigger className="flex-1 h-14 text-lg">
+            <div className="flex flex-col gap-3">
+              <div className="flex gap-3">
+                <Select value={searchCountry} onValueChange={setSearchCountry}>
+                  <SelectTrigger className="flex-1 h-12 text-base">
                   <SelectValue placeholder="Select country..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -151,47 +238,69 @@ const EmergencyHousingPage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                onClick={handleSearch} 
-                className="bg-secondary hover:bg-secondary/90 px-10 h-14 text-lg"
-                disabled={loading}
-              >
-                <Search className="h-5 w-5 mr-3" />
-                {loading ? 'Searching...' : 'Search'}
-              </Button>
+                <Button 
+                  onClick={handleSearch} 
+                  className="bg-secondary hover:bg-secondary/90 px-8 h-12 text-base"
+                  disabled={loading}
+                >
+                  {loading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Search className="h-5 w-5 mr-2" />}
+                  {loading ? 'Searching...' : 'Search'}
+                </Button>
+              </div>
+
+              <div className="flex gap-3 items-center">
+                <Input
+                  value={aiQuery}
+                  onChange={(e) => setAiQuery(e.target.value)}
+                  placeholder="AI търсене по държава (например “find shelters in Germany”)"
+                  className="h-11 text-base"
+                />
+                <Button
+                  variant="outline"
+                  className="h-11 px-6 text-base border-secondary text-secondary hover:bg-secondary/10"
+                  onClick={handleAiSearch}
+                  disabled={aiLoading}
+                >
+                  {aiLoading ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Bot className="h-5 w-5 mr-2" />}
+                  AI Locate
+                </Button>
+              </div>
+              {aiMessage && (
+                <p className="text-sm text-muted-foreground">{aiMessage}</p>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Map Section - PRIMARY FOCUS */}
-        <Card className="shadow-2xl mb-8">
-          <CardHeader className="pb-6">
-            <CardTitle className="flex items-center gap-3 text-2xl">
-              <MapPin className="h-7 w-7" />
+        <Card className="shadow-xl mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3 text-xl">
+              <MapPin className="h-6 w-6" />
               Emergency Shelter Locations
               {searchCountry !== 'all' && <span className="text-secondary">in {searchCountry}</span>}
             </CardTitle>
-            <p className="text-muted-foreground text-base mt-2">
+            <p className="text-muted-foreground text-sm mt-1">
               Click on any marker to view detailed shelter information
             </p>
           </CardHeader>
           <CardContent className="p-0">
             {loading ? (
-              <div className="h-[800px] flex items-center justify-center">
-                <p className="text-muted-foreground text-lg">Loading shelter locations...</p>
+              <div className="h-[680px] flex items-center justify-center">
+                <p className="text-muted-foreground text-base">Loading shelter locations...</p>
               </div>
             ) : displayedShelters.length === 0 ? (
-              <div className="h-[800px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg m-6">
-                <div className="text-center p-12">
-                  <Shield className="h-20 w-20 text-muted-foreground mx-auto mb-6" />
-                  <p className="text-2xl font-medium mb-3">No shelters found</p>
-                  <p className="text-muted-foreground text-lg">
+              <div className="h-[680px] flex items-center justify-center border-2 border-dashed border-muted rounded-lg m-6">
+                <div className="text-center p-8">
+                  <Shield className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-xl font-medium mb-2">No shelters found</p>
+                  <p className="text-muted-foreground text-base">
                     No emergency shelters found for the selected country.
                   </p>
                 </div>
               </div>
             ) : (
-              <div className="h-[800px]">
+              <div className="h-[680px]">
                 <EmergencyShelterMap shelters={displayedShelters} />
               </div>
             )}
@@ -200,29 +309,29 @@ const EmergencyHousingPage: React.FC = () => {
 
         {/* Related Properties */}
         {searchCountry !== 'all' && relatedProperties.length > 0 && (
-          <Card className="border-secondary/30 shadow-lg mb-8">
-            <CardHeader className="pb-6">
+          <Card className="border-secondary/30 shadow-md mb-6">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-3 text-2xl">
-                    <Home className="h-7 w-7 text-secondary" />
+                  <CardTitle className="flex items-center gap-3 text-xl">
+                    <Home className="h-6 w-6 text-secondary" />
                     Available Properties in {searchCountry}
                   </CardTitle>
-                  <p className="text-base text-muted-foreground mt-2">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Looking for long-term housing? Explore properties for sale in this country.
                   </p>
                 </div>
                 <Button 
                   variant="outline" 
                   onClick={() => window.location.href = '/properties'}
-                  className="border-secondary text-secondary hover:bg-secondary/10 h-12 px-6 text-base"
+                  className="border-secondary text-secondary hover:bg-secondary/10 h-10 px-5 text-sm"
                 >
                   View All Properties
                 </Button>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {relatedProperties.map((property) => (
                   <PropertyCard key={property.id} property={property} />
                 ))}
@@ -232,9 +341,9 @@ const EmergencyHousingPage: React.FC = () => {
         )}
 
         {/* Information Banner */}
-        <Alert className="bg-primary/5 border-primary/20 shadow-md">
-          <Heart className="h-6 w-6 text-primary" />
-          <AlertDescription className="text-lg">
+        <Alert className="bg-primary/5 border-primary/20 shadow-sm">
+          <Heart className="h-5 w-5 text-primary" />
+          <AlertDescription className="text-base">
             <span className="font-semibold">This is a humanitarian service.</span> Emergency shelters listed here provide temporary accommodation during crises. 
             This is separate from our property marketplace. If you need to list an emergency shelter, please contact our support team.
           </AlertDescription>

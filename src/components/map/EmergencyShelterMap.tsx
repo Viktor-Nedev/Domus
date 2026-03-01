@@ -3,8 +3,6 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { EmergencyShelter } from '@/types/emergency';
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_API_KEY;
-
 interface EmergencyShelterMapProps {
   shelters: EmergencyShelter[];
   onShelterSelect?: (shelter: EmergencyShelter) => void;
@@ -22,14 +20,20 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = MAPBOX_TOKEN;
+    const token = import.meta.env.VITE_MAPBOX_API_KEY;
+    if (!token) {
+      console.error('Missing Mapbox token. Set VITE_MAPBOX_API_KEY in your environment.');
+      return;
+    }
+
+    mapboxgl.accessToken = token;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [0, 20],
       zoom: 2,
-    });
+      });
 
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
@@ -62,15 +66,16 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       // Create custom marker element with professional styling
       const el = document.createElement('div');
       el.className = 'emergency-marker';
-      el.style.width = '44px';
-      el.style.height = '44px';
+      el.style.width = '36px';
+      el.style.height = '36px';
       el.style.cursor = 'pointer';
-      el.style.transition = 'transform 0.2s ease';
+      el.style.transition = 'transform 0.18s ease';
       el.style.display = 'block';
+      el.style.transformOrigin = 'center bottom';
       
       // Professional pin-style marker design with yellow accent
       el.innerHTML = `
-        <svg width="44" height="44" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" style="display: block;">
+        <svg width="36" height="36" viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg" style="display: block;">
           <!-- Outer glow -->
           <circle cx="22" cy="22" r="21" fill="#D4AF37" opacity="0.15" />
           
@@ -103,7 +108,7 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
 
       // Hover effect
       el.addEventListener('mouseenter', () => {
-        el.style.transform = 'scale(1.12)';
+        el.style.transform = 'scale(1.06)';
       });
 
       el.addEventListener('mouseleave', () => {
@@ -294,7 +299,8 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       const marker = new mapboxgl.Marker({
         element: el,
         anchor: 'bottom', // Bottom-center anchor for pin-style markers
-        offset: [0, 0],
+        offset: [0, -4],
+        draggable: false,
       })
         .setLngLat([lng, lat])
         .setPopup(popup)
@@ -336,7 +342,7 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
     <div 
       ref={mapContainer} 
       className="w-full h-full rounded-lg border-2 border-border shadow-xl"
-      style={{ minHeight: '800px' }}
+      style={{ minHeight: '680px' }}
     />
   );
 };
