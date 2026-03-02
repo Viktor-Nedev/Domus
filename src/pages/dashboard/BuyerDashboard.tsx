@@ -63,7 +63,7 @@ const BuyerDashboardRedesigned: React.FC = () => {
     prompt: string,
     apiKey: string,
     temperature = 0.3,
-    maxTokens = 300
+    maxTokens = 1024
   ) => {
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
@@ -98,7 +98,11 @@ const BuyerDashboardRedesigned: React.FC = () => {
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature, maxOutputTokens: maxTokens },
+        generationConfig: {
+          temperature,
+          maxOutputTokens: maxTokens,
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
@@ -183,34 +187,41 @@ const BuyerDashboardRedesigned: React.FC = () => {
     setAiMessage(null);
     try {
       const prompt = `
-        You are a real estate data assistant.
-        For the country "${countryQuery}", provide historical residential property price per square meter (average) for the last 8 years (most recent year included).
-        Respond ONLY with compact JSON:
-        {
-          "country": "<name>",
-          "currency": "€",
-          "points": [
-            {"year": 2018, "price_per_m2": 1800},
-            ...
-          ]
-        }
-        Use best available public/global index data; if specific numbers are uncertain, estimate realistic European-level prices.
-        Do not include any extra text or code fences.
-      `;
+Return ONLY JSON:
+{
+  "country": "${countryQuery}",
+  "currency": "EUR",
+  "points": [
+    {"year": 2018, "price_per_m2": 1800}
+  ]
+}
+Rules:
+- 8 yearly points (oldest to newest)
+- numbers only
+- no markdown
+`;
 
-      const data = await callGemini(prompt, geminiApiKey, 0.3, 300);
+      const data = await callGemini(prompt, geminiApiKey, 0.2, 1024);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed: any = safeParseJson(clean);
-      if (!parsed) {
-        console.error('AI parse error', clean);
+      const parsed: any = safeParseJson(text);
+
+      // Retry once with a stricter minimal prompt if first response is malformed
+      let finalParsed = parsed;
+      if (!finalParsed) {
+        const retryPrompt = `JSON only: {"country":"${countryQuery}","currency":"EUR","points":[{"year":2018,"price_per_m2":1800},{"year":2019,"price_per_m2":1850},{"year":2020,"price_per_m2":1900},{"year":2021,"price_per_m2":2000},{"year":2022,"price_per_m2":2100},{"year":2023,"price_per_m2":2200},{"year":2024,"price_per_m2":2300},{"year":2025,"price_per_m2":2400}]}`;
+        const retryData = await callGemini(retryPrompt, geminiApiKey, 0.1, 1024);
+        const retryText = retryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        finalParsed = safeParseJson(retryText);
+      }
+      if (!finalParsed) {
+        console.error('AI parse error', text);
         setAiMessage('AI върна невалиден JSON. Опитай отново.');
         setPriceTrend([]);
         return;
       }
 
-      const points = Array.isArray(parsed.points)
-        ? parsed.points
+      const points = Array.isArray(finalParsed.points)
+        ? finalParsed.points
             .map((p: any) => ({
               year: Number(p.year),
               price: Number(p.price_per_m2),
@@ -224,9 +235,9 @@ const BuyerDashboardRedesigned: React.FC = () => {
         return;
       }
 
-      setTrendCurrency(parsed.currency || '€');
+      setTrendCurrency(finalParsed.currency || 'EUR');
       setPriceTrend(points.sort((a, b) => a.year - b.year));
-      setAiMessage(`Показани са данни за ${parsed.country || countryQuery}.`);
+      setAiMessage(`Показани са данни за ${finalParsed.country || countryQuery}.`);
     } catch (err) {
       console.error('AI trend error', err);
       setAiMessage('Възникна грешка при AI заявката.');

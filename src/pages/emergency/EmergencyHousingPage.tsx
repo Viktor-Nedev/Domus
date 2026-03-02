@@ -36,7 +36,7 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
   const [aiGeneratedShelters, setAiGeneratedShelters] = useState<EmergencyShelter[]>([]);
 
-  const callGemini = async (prompt: string, apiKey: string) => {
+  const callGemini = async (prompt: string, apiKey: string, maxOutputTokens = 1024) => {
     // List models (v1) and pick a supported one
     const listRes = await fetch(
       `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
@@ -71,7 +71,11 @@ const EmergencyHousingPage: React.FC = () => {
       },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
+        generationConfig: {
+          temperature: 0.2,
+          maxOutputTokens,
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
@@ -125,42 +129,23 @@ const EmergencyHousingPage: React.FC = () => {
     setAiMessage(null);
 
     try {
-      const prompt = `
-Extract the country (and optional city) from the user query and return up to 6 shelter suggestions with coordinates.
-Return ONLY JSON:
-{
-  "countries":["Country"],
-  "suggestions":[
-    {
-      "name":"Shelter Name",
-      "address":"Full address",
-      "city":"City",
-      "country":"Country",
-      "latitude": 0,
-      "longitude": 0,
-      "capacity": 120,
-      "available_beds": 40,
-      "contact_phone": "+359123456",
-      "description":"Short description"
-    }
-  ]
-}
-If coordinates are unknown, skip that suggestion. User query: "${aiQuery}"
-`;
+      const countryPrompt = `
+Extract country from user query. Return ONLY JSON:
+{"countries":["Country"]}
+User query: "${aiQuery}"`;
 
-      const data = await callGemini(prompt, geminiApiKey);
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-      const clean = text.replace(/```json|```/g, '').trim();
-      const parsed: any = safeParseJson(clean);
-      if (!parsed) {
-        console.error('Failed to parse Gemini response', clean);
-        setAiMessage('AI отговорът беше невалиден. Опитай отново.');
+      const countryData = await callGemini(countryPrompt, geminiApiKey, 256);
+      const countryText = countryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const countryParsed: any = safeParseJson(countryText);
+      if (!countryParsed) {
+        console.error('Failed to parse Gemini country response', countryText);
+        setAiMessage('AI не върна валидна държава. Опитай отново.');
         return;
       }
 
-      const countriesFromAi: string[] = parsed?.countries || [];
-      const suggestions: any[] = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+      const countriesFromAi: string[] = Array.isArray(countryParsed?.countries)
+        ? countryParsed.countries
+        : [];
 
       if (countriesFromAi.length === 0) {
         setAiMessage('AI не разпозна държава. Опитай отново.');
@@ -174,6 +159,23 @@ If coordinates are unknown, skip that suggestion. User query: "${aiQuery}"
       const filteredShelters = allShelters.filter(
         (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
       );
+
+      const suggestionsPrompt = `
+For country "${targetCountry}", return up to 12 emergency shelter marker suggestions.
+Return ONLY JSON:
+{
+  "suggestions":[
+    {"name":"...", "city":"...", "country":"${targetCountry}", "address":"...", "latitude":0, "longitude":0}
+  ]
+}
+Skip entries without coordinates.`;
+
+      const suggestionsData = await callGemini(suggestionsPrompt, geminiApiKey, 1536);
+      const suggestionsText = suggestionsData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const suggestionsParsed: any = safeParseJson(suggestionsText);
+      const suggestions: any[] = Array.isArray(suggestionsParsed?.suggestions)
+        ? suggestionsParsed.suggestions
+        : [];
 
       const aiShelters: EmergencyShelter[] = suggestions
         .map((sugg, idx) => {
@@ -190,10 +192,10 @@ If coordinates are unknown, skip that suggestion. User query: "${aiQuery}"
             longitude: lng,
             shelter_type: 'AI_SUGGESTED',
             status: 'active',
-            capacity: sugg.capacity ?? null,
-            available_beds: sugg.available_beds ?? null,
+            capacity: null,
+            available_beds: null,
             description: sugg.description || 'AI suggested location',
-            contact_phone: sugg.contact_phone || null,
+            contact_phone: null,
             accepts_families: null,
             accepts_pets: null,
             wheelchair_accessible: null,
