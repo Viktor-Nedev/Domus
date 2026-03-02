@@ -46,17 +46,31 @@ const EmergencyHousingPage: React.FC = () => {
     description: '',
   });
 
-  const GEMINI_MODELS = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.0-pro',
-    'gemini-pro',
-  ];
-
   const callGemini = async (prompt: string, apiKey: string, maxOutputTokens = 1024) => {
+    const listRes = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+    );
+    if (!listRes.ok) {
+      const errText = await listRes.text().catch(() => '');
+      if (listRes.status === 403) {
+        throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
+    }
+    const list = await listRes.json();
+    const candidates: string[] =
+      list?.models
+        ?.filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'))
+        ?.map((m: any) => m.name)
+        ?.filter(Boolean) || [];
+
+    if (candidates.length === 0) {
+      throw new Error('No Gemini models available for generateContent with this API key.');
+    }
+
     const errors: string[] = [];
-    for (const modelName of GEMINI_MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    for (const modelName of candidates) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`;
 
       const res = await fetch(url, {
         method: 'POST',
@@ -80,10 +94,6 @@ const EmergencyHousingPage: React.FC = () => {
       const errText = await res.text().catch(() => '');
       if (res.status === 403) {
         throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
-      }
-      if (res.status === 404) {
-        errors.push(`${modelName}: not available (${res.status})`);
-        continue;
       }
       errors.push(`${modelName}: ${res.status} ${errText}`);
     }

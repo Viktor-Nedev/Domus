@@ -79,20 +79,33 @@ const MapExplorerPage: React.FC = () => {
     }
   };
 
-  const GEMINI_MODELS = [
-    'gemini-1.5-flash-latest',
-    'gemini-1.5-flash',
-    'gemini-1.0-pro',
-    'gemini-pro',
-  ];
-
   const callGeminiLocation = async (query: string, apiKey: string) => {
     const prompt = `Return JSON only: {"country":"", "city":""}. Parse location from query: "${query}".`;
     const errors: string[] = [];
 
-    for (const modelName of GEMINI_MODELS) {
+    // Discover available models that support generateContent
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+    if (!listRes.ok) {
+      const errText = await listRes.text().catch(() => '');
+      if (listRes.status === 403) {
+        throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
+    }
+    const list = await listRes.json();
+    const candidates: string[] =
+      list?.models
+        ?.filter((m: any) => (m.supportedGenerationMethods || []).includes('generateContent'))
+        ?.map((m: any) => m.name)
+        ?.filter(Boolean) || [];
+
+    if (candidates.length === 0) {
+      throw new Error('No Gemini models available for generateContent with this API key.');
+    }
+
+    for (const modelName of candidates) {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/${modelName}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -112,10 +125,6 @@ const MapExplorerPage: React.FC = () => {
       const errText = await res.text().catch(() => '');
       if (res.status === 403) {
         throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
-      }
-      if (res.status === 404) {
-        errors.push(`${modelName}: not available (${res.status})`);
-        continue;
       }
       errors.push(`${modelName}: ${res.status} ${errText}`);
     }
