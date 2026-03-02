@@ -60,10 +60,10 @@ const BuyerDashboardRedesigned: React.FC = () => {
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
   const GEMINI_MODELS = [
-    'models/gemini-1.5-flash-002',
-    'models/gemini-1.5-flash',
-    'models/gemini-1.5-pro',
-    'models/gemini-pro',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.0-pro',
+    'gemini-pro',
   ];
 
   const callGemini = async (
@@ -75,7 +75,7 @@ const BuyerDashboardRedesigned: React.FC = () => {
     const errors: string[] = [];
 
     for (const modelName of GEMINI_MODELS) {
-      const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
       const res = await fetch(url, {
         method: 'POST',
@@ -99,6 +99,10 @@ const BuyerDashboardRedesigned: React.FC = () => {
       const errText = await res.text().catch(() => '');
       if (res.status === 403) {
         throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      if (res.status === 404) {
+        errors.push(`${modelName}: not available (${res.status})`);
+        continue;
       }
       errors.push(`${modelName}: ${res.status} ${errText}`);
     }

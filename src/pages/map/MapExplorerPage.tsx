@@ -80,10 +80,10 @@ const MapExplorerPage: React.FC = () => {
   };
 
   const GEMINI_MODELS = [
-    'models/gemini-1.5-flash-002',
-    'models/gemini-1.5-flash',
-    'models/gemini-1.5-pro',
-    'models/gemini-pro',
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.0-pro',
+    'gemini-pro',
   ];
 
   const callGeminiLocation = async (query: string, apiKey: string) => {
@@ -92,7 +92,7 @@ const MapExplorerPage: React.FC = () => {
 
     for (const modelName of GEMINI_MODELS) {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
@@ -112,6 +112,10 @@ const MapExplorerPage: React.FC = () => {
       const errText = await res.text().catch(() => '');
       if (res.status === 403) {
         throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      if (res.status === 404) {
+        errors.push(`${modelName}: not available (${res.status})`);
+        continue;
       }
       errors.push(`${modelName}: ${res.status} ${errText}`);
     }
