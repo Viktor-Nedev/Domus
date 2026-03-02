@@ -231,8 +231,34 @@ User query: "${aiQuery}"`;
         (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
       );
 
-      // Show only real shelters from database to avoid incorrect AI coordinates
-      setDisplayedShelters(filteredShelters);
+      // Prefer real shelters; if none, fall back to properties with coordinates in this country
+      let fallbackShelters: EmergencyShelter[] = [];
+      if (filteredShelters.length === 0) {
+        fallbackShelters =
+          (propertyData || [])
+            .filter((p: any) => p.latitude && p.longitude)
+            .map((p: any, idx: number) => ({
+              id: `prop-${p.id}`,
+              name: p.title || 'Temporary housing',
+              address: p.address || `${p.city || ''}`.trim(),
+              city: p.city || targetCountry,
+              country: p.country || targetCountry,
+              latitude: Number(String(p.latitude).replace(',', '.')),
+              longitude: Number(String(p.longitude).replace(',', '.')),
+              shelter_type: 'property_listing',
+              status: 'active',
+              capacity: null,
+              available_beds: null,
+              description: p.description || 'Property listing with coordinates',
+              contact_phone: p.broker?.phone || null,
+              accepts_families: null,
+              accepts_pets: null,
+              wheelchair_accessible: null,
+              crisis_types: null,
+            })) as EmergencyShelter[];
+      }
+
+      setDisplayedShelters(filteredShelters.length > 0 ? filteredShelters : fallbackShelters);
 
       const { data: propertyData } = await supabase
         .from('properties')
@@ -246,7 +272,9 @@ User query: "${aiQuery}"`;
       setAiMessage(
         filteredShelters.length > 0
           ? `Found ${filteredShelters.length} shelters in ${targetCountry}.`
-          : `No shelters found in ${targetCountry}.`
+          : fallbackShelters.length > 0
+            ? `No shelters in database for ${targetCountry}, showing ${fallbackShelters.length} properties with coordinates as temporary housing.`
+            : `No shelters or properties with coordinates found in ${targetCountry}.`
       );
     } catch (error: any) {
       console.error('AI search error:', error);
