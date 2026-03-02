@@ -187,7 +187,7 @@ const AllPropertiesPage: React.FC = () => {
         ) : (
           <>
             <div className="mb-4 text-sm text-muted-foreground">
-              Показани {filteredProperties.length} от {properties.length} имота
+              Showing {filteredProperties.length} of {properties.length} properties
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProperties.map((property) => (

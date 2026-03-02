@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Home, Heart, MessageSquare, Search, Sparkles, Map, BarChart3, Clock, Eye, Loader2, Globe2, LineChart as LineChartIcon } from 'lucide-react';
+import { Heart, MessageSquare, Search, Sparkles, Clock, Eye, Loader2, Globe2, LineChart as LineChartIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -172,13 +172,13 @@ const BuyerDashboardRedesigned: React.FC = () => {
 
   const handleAiMarketSearch = async () => {
     if (!countryQuery.trim()) {
-      setAiMessage('Въведи държава за анализ.');
+      setAiMessage('Enter a country for analysis.');
       return;
     }
 
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) {
-      setAiMessage('Липсва Gemini API ключ (VITE_GEMINI_API_KEY).');
+      setAiMessage('Missing Gemini API key (VITE_GEMINI_API_KEY).');
       return;
     }
 
@@ -214,7 +214,7 @@ Rules:
       }
       if (!finalParsed) {
         console.error('AI parse error', text);
-        setAiMessage('AI върна невалиден JSON. Опитай отново.');
+        setAiMessage('AI returned invalid JSON. Please try again.');
         setPriceTrend([]);
         return;
       }
@@ -229,17 +229,17 @@ Rules:
         : [];
 
       if (points.length === 0) {
-        setAiMessage('AI не върна валидни данни.');
+        setAiMessage('AI did not return valid data.');
         setPriceTrend([]);
         return;
       }
 
       setTrendCurrency(finalParsed.currency || 'EUR');
       setPriceTrend(points.sort((a, b) => a.year - b.year));
-      setAiMessage(`Показани са данни за ${finalParsed.country || countryQuery}.`);
+      setAiMessage(`Showing data for ${finalParsed.country || countryQuery}.`);
     } catch (err) {
       console.error('AI trend error', err);
-      setAiMessage('Възникна грешка при AI заявката.');
+      setAiMessage('An error occurred during the AI request.');
       setPriceTrend([]);
     } finally {
       setAiLoading(false);
@@ -358,7 +358,7 @@ Rules:
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground">
-              Въведи държава, за да видиш исторически средни цени на имоти (€/m²) за последните години.
+              Enter a country to view historical average property prices (EUR/m2) for recent years.
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -366,7 +366,7 @@ Rules:
               <Input
                 value={countryQuery}
                 onChange={(e) => setCountryQuery(e.target.value)}
-                placeholder="напр. Germany, Bulgaria, Spain..."
+                placeholder="e.g. Germany, Bulgaria, Spain..."
                 className="h-11 md:flex-1 text-base"
               />
               <Button
@@ -515,54 +515,11 @@ Rules:
               </div>
             ) : (
               <div className="text-sm text-muted-foreground">
-                Няма данни за показване. Изпълни AI заявка с държава.
+                No data to display. Run an AI request with a country.
               </div>
             )}
           </CardContent>
         </Card>
-
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          <Link to="/ai-finder">
-            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <Sparkles className="h-8 w-8 text-yellow-500 mb-2" />
-                <CardTitle>Home Finder</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Answer a few questions and let AI find your perfect property match
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link to="/map">
-            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <Map className="h-8 w-8 text-yellow-500 mb-2" />
-                <CardTitle>Map Explorer</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  Explore properties on an interactive map with AI location assistance
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-          <Link to="/market">
-            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
-              <CardHeader>
-                <BarChart3 className="h-8 w-8 text-yellow-500 mb-2" />
-                <CardTitle>Market Analytics</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  View market trends, price analytics, and investment insights
-                </p>
-              </CardContent>
-            </Card>
-          </Link>
-        </div>
 
         {/* Saved Properties */}
         {savedProperties.length > 0 && (

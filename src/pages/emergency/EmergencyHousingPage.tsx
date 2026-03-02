@@ -125,14 +125,14 @@ const EmergencyHousingPage: React.FC = () => {
   const handleAddShelter = async () => {
     if (profile?.account_type !== 'broker') return;
     if (!newShelter.name || !newShelter.country || !newShelter.city || !newShelter.address) {
-      setAiMessage('Попълни име, държава, град и адрес за новото убежище.');
+      setAiMessage('Please fill shelter name, country, city, and address.');
       return;
     }
 
     const latitude = Number(newShelter.latitude);
     const longitude = Number(newShelter.longitude);
     if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
-      setAiMessage('Въведи валидни координати за новото убежище.');
+      setAiMessage('Please enter valid coordinates for the new shelter.');
       return;
     }
 
@@ -165,11 +165,11 @@ const EmergencyHousingPage: React.FC = () => {
         longitude: '',
         description: '',
       });
-      setAiMessage('Новото убежище беше добавено успешно.');
+      setAiMessage('New shelter was added successfully.');
       await loadAllShelters();
     } catch (error) {
       console.error('Error adding shelter:', error);
-      setAiMessage('Неуспешно добавяне на убежище. Провери правата в Supabase.');
+      setAiMessage('Failed to add shelter. Check your Supabase policies.');
     } finally {
       setSavingShelter(false);
     }
@@ -177,13 +177,13 @@ const EmergencyHousingPage: React.FC = () => {
 
   const handleAiSearch = async () => {
     if (!aiQuery.trim()) {
-      setAiMessage('Въведи държава или регион за AI търсене.');
+      setAiMessage('Enter a country or region for AI search.');
       return;
     }
 
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) {
-      setAiMessage('Липсва Gemini API ключ. Задай VITE_GEMINI_API_KEY в .env.');
+      setAiMessage('Missing Gemini API key. Set VITE_GEMINI_API_KEY in .env.');
       return;
     }
 
@@ -206,7 +206,7 @@ User query: "${aiQuery}"`;
       }
       if (!countryParsed) {
         console.error('Failed to parse Gemini country response', countryText);
-        setAiMessage('AI не върна валидна държава. Опитай отново.');
+        setAiMessage('AI did not return a valid country. Please try again.');
         return;
       }
 
@@ -215,7 +215,7 @@ User query: "${aiQuery}"`;
         : [];
 
       if (countriesFromAi.length === 0) {
-        setAiMessage('AI не разпозна държава. Опитай отново.');
+        setAiMessage('AI could not recognize a country. Please try again.');
         return;
       }
 
@@ -292,11 +292,11 @@ Skip entries without coordinates.`;
 
       setRelatedProperties(propertyData || []);
       setAiMessage(
-        `AI намери държава: ${targetCountry} (${filteredShelters.length} в базата, ${aiShelters.length} AI предложения)`
+        `AI detected country: ${targetCountry} (${filteredShelters.length} in database, ${aiShelters.length} AI suggestions)`
       );
     } catch (error) {
       console.error('AI search error:', error);
-      setAiMessage('Възникна проблем с AI търсенето.');
+      setAiMessage('An error occurred during AI search.');
     } finally {
       setAiLoading(false);
     }
@@ -359,7 +359,7 @@ Skip entries without coordinates.`;
                 <Input
                   value={aiQuery}
                   onChange={(e) => setAiQuery(e.target.value)}
-                  placeholder="Напиши държава, напр. “Find shelters in Germany”"
+                  placeholder='Type a country, e.g. "Find shelters in Germany"'
                   className="h-11 text-base"
                 />
                 <Button

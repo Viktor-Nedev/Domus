@@ -58,7 +58,7 @@ const AIPropertyMatchPage: React.FC = () => {
   const handleNextStep = () => {
     if (step === 1) {
       if (!budgetMin || !budgetMax || propertyTypes.length === 0 || countries.length === 0) {
-        toast.error('Моля, попълнете всички задължителни полета');
+        toast.error('Please fill all required fields');
         return;
       }
       setStep(2);
@@ -67,7 +67,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
   const handleFindMatches = async () => {
     if (!user) {
-      toast.error('Моля, влезте в профила си');
+      toast.error('Please sign in to your account');
       navigate('/auth');
       return;
     }
@@ -108,11 +108,11 @@ const AIPropertyMatchPage: React.FC = () => {
       if (data?.matches) {
         setMatches(data.matches);
         setStep(3);
-        toast.success(`Намерихме ${data.matches.length} имота, които отговарят на вашите критерии!`);
+        toast.success(`We found ${data.matches.length} properties matching your criteria!`);
       }
     } catch (error: any) {
       console.error('Error finding matches:', error);
-      toast.error('Грешка при търсене на имоти');
+      toast.error('Error while searching properties');
     } finally {
       setLoading(false);
     }
@@ -126,9 +126,9 @@ const AIPropertyMatchPage: React.FC = () => {
           <div className="flex items-center justify-center mb-4">
             <Sparkles className="h-12 w-12 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold mb-2 gradient-text">AI Съвпадение на Имоти</h1>
+          <h1 className="text-4xl font-bold mb-2 gradient-text">AI Property Matching</h1>
           <p className="text-muted-foreground">
-            Нашият AI ще намери перфектния DOMUS за вас
+            Our AI will find your perfect DOMUS
           </p>
         </div>
 
@@ -153,15 +153,15 @@ const AIPropertyMatchPage: React.FC = () => {
         {step === 1 && (
           <Card>
             <CardHeader>
-              <CardTitle>Вашият DOMUS Профил</CardTitle>
+              <CardTitle>Your DOMUS Profile</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Budget */}
               <div>
-                <Label className="text-lg mb-4 block">Бюджет (EUR)</Label>
+                <Label className="text-lg mb-4 block">Budget (EUR)</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="budget-min">Минимум</Label>
+                    <Label htmlFor="budget-min">Minimum</Label>
                     <Input
                       id="budget-min"
                       type="number"
@@ -170,7 +170,7 @@ const AIPropertyMatchPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="budget-max">Максимум</Label>
+                    <Label htmlFor="budget-max">Maximum</Label>
                     <Input
                       id="budget-max"
                       type="number"
@@ -183,13 +183,13 @@ const AIPropertyMatchPage: React.FC = () => {
 
               {/* Property Type */}
               <div>
-                <Label className="text-lg mb-4 block">Тип имот</Label>
+                <Label className="text-lg mb-4 block">Property Type</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { value: 'apartment', label: 'Апартамент', icon: Home },
-                    { value: 'house', label: 'Къща', icon: Home },
-                    { value: 'land', label: 'Земя', icon: MapPin },
-                    { value: 'commercial', label: 'Търговски', icon: DollarSign },
+                    { value: 'apartment', label: 'Apartment', icon: Home },
+                    { value: 'house', label: 'House', icon: Home },
+                    { value: 'land', label: 'Land', icon: MapPin },
+                    { value: 'commercial', label: 'Commercial', icon: DollarSign },
                   ].map((type) => (
                     <div
                       key={type.value}
@@ -211,7 +211,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               {/* Countries */}
               <div>
-                <Label className="text-lg mb-4 block">Локация (държави)</Label>
+                <Label className="text-lg mb-4 block">Location (countries)</Label>
                 <div className="grid grid-cols-2 gap-3">
                   {['Bulgaria', 'Spain', 'Italy', 'Greece', 'Romania', 'Turkey'].map((country) => (
                     <div
@@ -233,36 +233,36 @@ const AIPropertyMatchPage: React.FC = () => {
 
               {/* Cities */}
               <div>
-                <Label htmlFor="cities">Градове (опционално, разделени със запетая)</Label>
+                <Label htmlFor="cities">Cities (optional, comma separated)</Label>
                 <Input
                   id="cities"
                   value={cities}
                   onChange={(e) => setCities(e.target.value)}
-                  placeholder="напр. Sofia, Barcelona, Rome"
+                  placeholder="e.g. Sofia, Barcelona, Rome"
                 />
               </div>
 
               {/* Purpose */}
               <div>
-                <Label htmlFor="purpose">Цел на покупката</Label>
+                <Label htmlFor="purpose">Purchase Purpose</Label>
                 <Select value={purpose} onValueChange={(v: any) => setPurpose(v)}>
                   <SelectTrigger id="purpose">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="investment">Инвестиция</SelectItem>
-                    <SelectItem value="primary_residence">Основно жилище</SelectItem>
-                    <SelectItem value="vacation_home">Ваканционен дом</SelectItem>
+                    <SelectItem value="investment">Investment</SelectItem>
+                    <SelectItem value="primary_residence">Primary Residence</SelectItem>
+                    <SelectItem value="vacation_home">Vacation Home</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               {/* Bedrooms */}
               <div>
-                <Label className="text-lg mb-4 block">Брой спални</Label>
+                <Label className="text-lg mb-4 block">Bedrooms</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="bedrooms-min">Минимум</Label>
+                    <Label htmlFor="bedrooms-min">Minimum</Label>
                     <Input
                       id="bedrooms-min"
                       type="number"
@@ -271,7 +271,7 @@ const AIPropertyMatchPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="bedrooms-max">Максимум</Label>
+                    <Label htmlFor="bedrooms-max">Maximum</Label>
                     <Input
                       id="bedrooms-max"
                       type="number"
@@ -284,10 +284,10 @@ const AIPropertyMatchPage: React.FC = () => {
 
               {/* Size */}
               <div>
-                <Label className="text-lg mb-4 block">Площ (кв.м)</Label>
+                <Label className="text-lg mb-4 block">Area (sqm)</Label>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="size-min">Минимум</Label>
+                    <Label htmlFor="size-min">Minimum</Label>
                     <Input
                       id="size-min"
                       type="number"
@@ -296,7 +296,7 @@ const AIPropertyMatchPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="size-max">Максимум</Label>
+                    <Label htmlFor="size-max">Maximum</Label>
                     <Input
                       id="size-max"
                       type="number"
@@ -308,7 +308,7 @@ const AIPropertyMatchPage: React.FC = () => {
               </div>
 
               <Button onClick={handleNextStep} className="w-full" size="lg">
-                Следваща стъпка
+                Next Step
               </Button>
             </CardContent>
           </Card>
@@ -318,15 +318,15 @@ const AIPropertyMatchPage: React.FC = () => {
         {step === 2 && (
           <Card>
             <CardHeader>
-              <CardTitle>Предпочитания за начин на живот</CardTitle>
+              <CardTitle>Lifestyle Preferences</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Какво прави един DOMUS идеален за вас? (1 = не е важно, 10 = много важно)
+                What makes a DOMUS ideal for you? (1 = not important, 10 = very important)
               </p>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Близост до обществен транспорт</Label>
+                  <Label>Proximity to Public Transport</Label>
                   <span className="text-sm font-semibold">{proximityTransport[0]}/10</span>
                 </div>
                 <Slider
@@ -340,7 +340,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Училища наблизо</Label>
+                  <Label>Nearby Schools</Label>
                   <span className="text-sm font-semibold">{proximitySchools[0]}/10</span>
                 </div>
                 <Slider
@@ -354,7 +354,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Нощен живот и ресторанти</Label>
+                  <Label>Nightlife and Restaurants</Label>
                   <span className="text-sm font-semibold">{proximityNightlife[0]}/10</span>
                 </div>
                 <Slider
@@ -368,7 +368,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Тих квартал</Label>
+                  <Label>Quiet Neighborhood</Label>
                   <span className="text-sm font-semibold">{proximityQuiet[0]}/10</span>
                 </div>
                 <Slider
@@ -382,7 +382,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Зелени площи и паркове</Label>
+                  <Label>Green Areas and Parks</Label>
                   <span className="text-sm font-semibold">{proximityGreen[0]}/10</span>
                 </div>
                 <Slider
@@ -396,7 +396,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Търговски центрове</Label>
+                  <Label>Shopping Centers</Label>
                   <span className="text-sm font-semibold">{proximityShopping[0]}/10</span>
                 </div>
                 <Slider
@@ -410,7 +410,7 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <Label>Медицински заведения</Label>
+                  <Label>Medical Facilities</Label>
                   <span className="text-sm font-semibold">{proximityMedical[0]}/10</span>
                 </div>
                 <Slider
@@ -424,10 +424,10 @@ const AIPropertyMatchPage: React.FC = () => {
 
               <div className="flex gap-4">
                 <Button onClick={() => setStep(1)} variant="outline" className="flex-1">
-                  Назад
+                  Back
                 </Button>
                 <Button onClick={handleFindMatches} className="flex-1" size="lg" disabled={loading}>
-                  {loading ? 'Търсене...' : 'Намери моя DOMUS'}
+                  {loading ? 'Searching...' : 'Find My DOMUS'}
                 </Button>
               </div>
             </CardContent>
@@ -441,16 +441,16 @@ const AIPropertyMatchPage: React.FC = () => {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Sparkles className="h-6 w-6 mr-2 text-primary" />
-                  AI Анализ завършен!
+                  AI Analysis Complete!
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-muted-foreground mb-4">
-                  Намерихме <span className="font-bold text-primary">{matches.length} имота</span>, които отговарят на вашите критерии.
-                  Всеки имот е оценен според вашите предпочитания.
+                  We found <span className="font-bold text-primary">{matches.length} properties</span> that match your criteria.
+                  Each property is scored according to your preferences.
                 </p>
                 <Button onClick={() => setStep(1)} variant="outline">
-                  Промени критериите
+                  Change Criteria
                 </Button>
               </CardContent>
             </Card>
@@ -466,7 +466,7 @@ const AIPropertyMatchPage: React.FC = () => {
                     />
                     <Card className="mt-2 bg-primary/5 border-primary/20">
                       <CardContent className="pt-4">
-                        <p className="text-sm font-semibold mb-2">Защо този имот ви подхожда:</p>
+                        <p className="text-sm font-semibold mb-2">Why this property fits you:</p>
                         <ul className="text-sm text-muted-foreground space-y-1">
                           {match.reasons.map((reason, idx) => (
                             <li key={idx}>• {reason}</li>
@@ -481,10 +481,10 @@ const AIPropertyMatchPage: React.FC = () => {
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground mb-4">
-                    Не намерихме имоти, които отговарят на всички ваши критерии.
+                    We did not find properties that match all your criteria.
                   </p>
                   <Button onClick={() => setStep(1)}>
-                    Промени критериите
+                    Change Criteria
                   </Button>
                 </CardContent>
               </Card>
