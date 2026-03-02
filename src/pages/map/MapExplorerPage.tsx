@@ -140,7 +140,7 @@ const MapExplorerPage: React.FC = () => {
     try {
       let extractedCountry = '';
       let extractedCity = '';
-      const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
+        const geminiKey = import.meta.env.VITE_GEMINI_API_KEY;
 
       if (geminiKey) {
         try {
