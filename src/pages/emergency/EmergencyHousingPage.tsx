@@ -102,9 +102,7 @@ const EmergencyHousingPage: React.FC = () => {
       return;
     }
 
-    const geminiApiKey =
-      import.meta.env.VITE_GEMINI_API_KEY ||
-      'AIzaSyAOZVXfJIuHT_PFcYGFAG1dCDXb7rRF18A';
+    const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!geminiApiKey) {
       setAiMessage('Липсва Gemini API ключ. Задай VITE_GEMINI_API_KEY в .env.');
       return;
