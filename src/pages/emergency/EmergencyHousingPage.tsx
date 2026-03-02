@@ -21,6 +21,7 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
+  const [aiGeneratedShelters, setAiGeneratedShelters] = useState<EmergencyShelter[]>([]);
 
   const callGemini = async (prompt: string, apiKey: string) => {
     // List models (v1) and pick a supported one
@@ -114,23 +115,43 @@ const EmergencyHousingPage: React.FC = () => {
 
     try {
       const prompt = `
-        Extract the country names mentioned in the user query.
-        Return ONLY valid country names as JSON string:
-        {"countries":["Country 1","Country 2"]}
-        If none are found, return {"countries":[]}.
-        User query: "${aiQuery}"
-      `;
+Extract the country (and optional city) from the user query and return up to 6 shelter suggestions with coordinates.
+Return ONLY JSON:
+{
+  "countries":["Country"],
+  "suggestions":[
+    {
+      "name":"Shelter Name",
+      "address":"Full address",
+      "city":"City",
+      "country":"Country",
+      "latitude": 0,
+      "longitude": 0,
+      "capacity": 120,
+      "available_beds": 40,
+      "contact_phone": "+359123456",
+      "description":"Short description"
+    }
+  ]
+}
+If coordinates are unknown, skip that suggestion. User query: "${aiQuery}"
+`;
 
       const data = await callGemini(prompt, geminiApiKey);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-      let countriesFromAi: string[] = [];
+      const clean = text.replace(/```json|```/g, '').trim();
+      let parsed: any;
       try {
-        const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
-        countriesFromAi = parsed.countries || [];
+        parsed = JSON.parse(clean);
       } catch (err) {
         console.error('Failed to parse Gemini response', err, text);
+        setAiMessage('AI отговорът беше невалиден. Опитай отново.');
+        return;
       }
+
+      const countriesFromAi: string[] = parsed?.countries || [];
+      const suggestions: any[] = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
 
       if (countriesFromAi.length === 0) {
         setAiMessage('AI не разпозна държава. Опитай отново.');
@@ -144,7 +165,36 @@ const EmergencyHousingPage: React.FC = () => {
       const filteredShelters = allShelters.filter(
         (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
       );
-      setDisplayedShelters(filteredShelters);
+
+      const aiShelters: EmergencyShelter[] = suggestions
+        .map((sugg, idx) => {
+          const lat = Number(sugg.latitude);
+          const lng = Number(sugg.longitude);
+          if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+          return {
+            id: `ai-${Date.now()}-${idx}`,
+            name: sugg.name || 'AI Suggested Shelter',
+            address: sugg.address || `${sugg.city || ''} ${sugg.country || ''}`.trim(),
+            city: sugg.city || targetCountry,
+            country: sugg.country || targetCountry,
+            latitude: lat,
+            longitude: lng,
+            shelter_type: 'AI_SUGGESTED',
+            status: 'active',
+            capacity: sugg.capacity ?? null,
+            available_beds: sugg.available_beds ?? null,
+            description: sugg.description || 'AI suggested location',
+            contact_phone: sugg.contact_phone || null,
+            accepts_families: null,
+            accepts_pets: null,
+            wheelchair_accessible: null,
+            crisis_types: null,
+          } as EmergencyShelter;
+        })
+        .filter(Boolean) as EmergencyShelter[];
+
+      setAiGeneratedShelters(aiShelters);
+      setDisplayedShelters([...filteredShelters, ...aiShelters]);
 
       const { data: propertyData } = await supabase
         .from('properties')
@@ -155,7 +205,9 @@ const EmergencyHousingPage: React.FC = () => {
         .limit(6);
 
       setRelatedProperties(propertyData || []);
-      setAiMessage(`AI намери държава: ${targetCountry} (${filteredShelters.length} убежища)`);
+      setAiMessage(
+        `AI намери държава: ${targetCountry} (${filteredShelters.length} в базата, ${aiShelters.length} AI предложения)`
+      );
     } catch (error) {
       console.error('AI search error:', error);
       setAiMessage('Възникна проблем с AI търсенето.');

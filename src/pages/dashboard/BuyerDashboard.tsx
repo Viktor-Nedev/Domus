@@ -190,7 +190,15 @@ const BuyerDashboardRedesigned: React.FC = () => {
       const data = await callGemini(prompt, geminiApiKey, 0.3, 300);
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
       const clean = text.replace(/```json|```/g, '').trim();
-      const parsed = JSON.parse(clean);
+      let parsed: any;
+      try {
+        parsed = JSON.parse(clean);
+      } catch (parseErr) {
+        console.error('AI parse error', parseErr, text);
+        setAiMessage('AI върна невалиден JSON. Опитай отново.');
+        setPriceTrend([]);
+        return;
+      }
 
       const points = Array.isArray(parsed.points)
         ? parsed.points
