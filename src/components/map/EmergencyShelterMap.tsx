@@ -129,174 +129,68 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
         </svg>
       `;
 
-      // Create styled popup content
+      // Create styled popup content (compact English)
       const popupContent = `
         <div style="
-          padding: 16px;
-          min-width: 280px;
-          max-width: 350px;
+          padding: 12px;
+          min-width: 220px;
+          max-width: 280px;
           font-family: system-ui, -apple-system, sans-serif;
         ">
           <!-- Header -->
           <div style="
-            margin-bottom: 12px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #D4AF37;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #E5E7EB;
           ">
             <h3 style="
-              margin: 0 0 6px 0;
-              font-size: 18px;
+              margin: 0 0 4px 0;
+              font-size: 16px;
               font-weight: 700;
               color: #800020;
               line-height: 1.3;
             ">${shelter.name}</h3>
             <span style="
-              display: inline-block;
-              padding: 4px 10px;
-              background: #D4AF37;
-              color: #FFFFFF;
-              font-size: 12px;
-              font-weight: 600;
-              border-radius: 4px;
-              text-transform: uppercase;
+              display: inline-block; padding: 3px 8px; background: #D4AF37; color: #FFFFFF;
+              font-size: 11px; font-weight: 600; border-radius: 4px; text-transform: uppercase;
             ">${shelter.shelter_type.replace(/_/g, ' ')}</span>
           </div>
           
-          <!-- Description -->
-          ${shelter.description ? `
-            <p style="
-              margin: 0 0 12px 0;
-              font-size: 14px;
-              color: #666;
-              line-height: 1.5;
-            ">${shelter.description}</p>
-          ` : ''}
-          
           <!-- Location -->
-          <div style="margin-bottom: 10px;">
-            <div style="
-              display: flex;
-              align-items: flex-start;
-              gap: 8px;
-              margin-bottom: 6px;
-            ">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#800020" stroke-width="2">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span style="font-size: 14px; color: #333; font-weight: 500;">
-                ${shelter.address}
-              </span>
-            </div>
-            <div style="
-              padding-left: 24px;
-              font-size: 13px;
-              color: #666;
-            ">
-              ${shelter.city}, ${shelter.country}
-            </div>
+          <div style="margin: 0 0 8px 0; font-size: 13px; color: #374151;">
+            <strong>Address:</strong><br/>
+            ${shelter.address || '—'}<br/>
+            ${shelter.city || ''}${shelter.city && shelter.country ? ', ' : ''}${shelter.country || ''}
           </div>
-          
+
           <!-- Capacity & Availability -->
-          <div style="
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin: 12px 0;
-          ">
-            ${shelter.capacity ? `
-              <div style="
-                padding: 8px;
-                background: #F5F5F5;
-                border-radius: 6px;
-                text-align: center;
-              ">
-                <div style="font-size: 11px; color: #666; margin-bottom: 2px;">CAPACITY</div>
-                <div style="font-size: 16px; font-weight: 700; color: #800020;">
-                  ${shelter.capacity}
-                </div>
-              </div>
-            ` : ''}
-            ${shelter.available_beds ? `
-              <div style="
-                padding: 8px;
-                background: #DCFCE7;
-                border-radius: 6px;
-                text-align: center;
-              ">
-                <div style="font-size: 11px; color: #166534; margin-bottom: 2px;">AVAILABLE</div>
-                <div style="font-size: 16px; font-weight: 700; color: #16A34A;">
-                  ${shelter.available_beds} beds
-                </div>
-              </div>
-            ` : ''}
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 8px;">
+            <div style="padding: 8px; background:#F3F4F6; border-radius:6px; text-align:center;">
+              <div style="font-size:11px; color:#6B7280;">Capacity</div>
+              <div style="font-size:15px; font-weight:700; color:#111827;">${shelter.capacity ?? 'N/A'}</div>
+            </div>
+            <div style="padding: 8px; background:#ECFDF3; border-radius:6px; text-align:center;">
+              <div style="font-size:11px; color:#166534;">Available</div>
+              <div style="font-size:15px; font-weight:700; color:#166534;">${shelter.available_beds ?? 'N/A'}</div>
+            </div>
           </div>
-          
+
           <!-- Contact -->
           ${shelter.contact_phone ? `
             <div style="
-              margin-top: 12px;
-              padding: 10px;
-              background: #FEF3C7;
-              border-left: 3px solid #D4AF37;
-              border-radius: 4px;
+              margin-bottom: 8px; padding: 8px; background:#FEF3C7; border-left:3px solid #D97706;
+              border-radius:4px; font-size:13px; color:#92400E;
             ">
-              <div style="
-                display: flex;
-                align-items: center;
-                gap: 8px;
-              ">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#800020" stroke-width="2">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                <a href="tel:${shelter.contact_phone}" style="
-                  font-size: 15px;
-                  font-weight: 600;
-                  color: #800020;
-                  text-decoration: none;
-                ">${shelter.contact_phone}</a>
-              </div>
+              <strong>Contact:</strong> <a href="tel:${shelter.contact_phone}" style="color:#92400E; text-decoration:none;">${shelter.contact_phone}</a>
             </div>
           ` : ''}
-          
-          <!-- Amenities -->
-          <div style="
-            margin-top: 12px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-          ">
-            ${shelter.accepts_families ? `
-              <span style="
-                padding: 4px 8px;
-                background: #E0E7FF;
-                color: #3730A3;
-                font-size: 11px;
-                font-weight: 600;
-                border-radius: 4px;
-              ">Families Welcome</span>
-            ` : ''}
-            ${shelter.wheelchair_accessible ? `
-              <span style="
-                padding: 4px 8px;
-                background: #DBEAFE;
-                color: #1E40AF;
-                font-size: 11px;
-                font-weight: 600;
-                border-radius: 4px;
-              ">Accessible</span>
-            ` : ''}
-            ${shelter.accepts_pets ? `
-              <span style="
-                padding: 4px 8px;
-                background: #FEE2E2;
-                color: #991B1B;
-                font-size: 11px;
-                font-weight: 600;
-                border-radius: 4px;
-              ">Pets Allowed</span>
-            ` : ''}
-          </div>
+
+          <!-- Notes -->
+          ${shelter.description ? `
+            <div style="font-size:12px; color:#4B5563; line-height:1.4;">
+              ${shelter.description}
+            </div>
+          ` : ''}
         </div>
       `;
 
