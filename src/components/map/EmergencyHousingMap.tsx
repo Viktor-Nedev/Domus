@@ -83,11 +83,17 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
     // Add markers for each property
     const bounds = new mapboxgl.LngLatBounds();
 
-    properties.forEach(property => {
-      if (!property.latitude || !property.longitude) return;
+    const parseCoord = (value: any) => {
+      if (value === null || value === undefined) return NaN;
+      const normalized = String(value).replace(',', '.');
+      return Number.parseFloat(normalized);
+    };
 
-      const lat = typeof property.latitude === 'string' ? parseFloat(property.latitude) : property.latitude;
-      const lng = typeof property.longitude === 'string' ? parseFloat(property.longitude) : property.longitude;
+    properties.forEach(property => {
+      const lat = parseCoord(property.latitude);
+      const lng = parseCoord(property.longitude);
+
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
       // Create marker
       const el = document.createElement('div');

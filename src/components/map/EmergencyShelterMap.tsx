@@ -77,12 +77,18 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
     markers.current = [];
 
     // Add markers for each shelter
-    shelters.forEach((shelter) => {
-      const lng = Number(shelter.longitude);
-      const lat = Number(shelter.latitude);
+    const parseCoord = (value: any) => {
+      if (value === null || value === undefined) return NaN;
+      const normalized = String(value).replace(',', '.');
+      return Number.parseFloat(normalized);
+    };
 
-      if (isNaN(lng) || isNaN(lat)) {
-        console.error('Invalid coordinates for shelter:', shelter.name);
+    shelters.forEach((shelter) => {
+      const lng = parseCoord(shelter.longitude);
+      const lat = parseCoord(shelter.latitude);
+
+      if (Number.isNaN(lng) || Number.isNaN(lat)) {
+        console.error('Invalid coordinates for shelter:', shelter.name, shelter.latitude, shelter.longitude);
         return;
       }
 
