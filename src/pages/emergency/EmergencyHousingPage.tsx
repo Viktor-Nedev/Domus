@@ -231,60 +231,8 @@ User query: "${aiQuery}"`;
         (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
       );
 
-      const suggestionsPrompt = `
-For country "${targetCountry}", return up to 12 emergency shelter marker suggestions.
-Return ONLY JSON:
-{
-  "suggestions":[
-    {"name":"...", "city":"...", "country":"${targetCountry}", "address":"...", "latitude":0, "longitude":0}
-  ]
-}
-Skip entries without coordinates.`;
-
-      const suggestionsData = await callGemini(suggestionsPrompt, geminiApiKey, 1536);
-      const suggestionsText = suggestionsData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      let suggestionsParsed: any = safeParseJson(suggestionsText);
-      if (!suggestionsParsed) {
-        const retrySuggestionsData = await callGemini(
-          `JSON only for ${targetCountry}: {"suggestions":[{"name":"Emergency Shelter","city":"City","country":"${targetCountry}","address":"Address","latitude":42.0,"longitude":23.0}]}`,
-          geminiApiKey,
-          1024
-        );
-        const retrySuggestionsText = retrySuggestionsData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        suggestionsParsed = safeParseJson(retrySuggestionsText);
-      }
-      const suggestions: any[] = Array.isArray(suggestionsParsed?.suggestions)
-        ? suggestionsParsed.suggestions
-        : [];
-
-      const aiShelters: EmergencyShelter[] = suggestions
-        .map((sugg, idx) => {
-          const lat = Number(sugg.latitude);
-          const lng = Number(sugg.longitude);
-          if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
-          return {
-            id: `ai-${Date.now()}-${idx}`,
-            name: sugg.name || 'AI Suggested Shelter',
-            address: sugg.address || `${sugg.city || ''} ${sugg.country || ''}`.trim(),
-            city: sugg.city || targetCountry,
-            country: sugg.country || targetCountry,
-            latitude: lat,
-            longitude: lng,
-            shelter_type: 'AI_SUGGESTED',
-            status: 'active',
-            capacity: null,
-            available_beds: null,
-            description: sugg.description || 'AI suggested location',
-            contact_phone: null,
-            accepts_families: null,
-            accepts_pets: null,
-            wheelchair_accessible: null,
-            crisis_types: null,
-          } as EmergencyShelter;
-        })
-        .filter(Boolean) as EmergencyShelter[];
-
-      setDisplayedShelters([...filteredShelters, ...aiShelters]);
+      // Show only real shelters from database to avoid incorrect AI coordinates
+      setDisplayedShelters(filteredShelters);
 
       const { data: propertyData } = await supabase
         .from('properties')
@@ -296,7 +244,9 @@ Skip entries without coordinates.`;
 
       setRelatedProperties(propertyData || []);
       setAiMessage(
-        `AI detected country: ${targetCountry} (${filteredShelters.length} in database, ${aiShelters.length} AI suggestions)`
+        filteredShelters.length > 0
+          ? `Found ${filteredShelters.length} shelters in ${targetCountry}.`
+          : `No shelters found in ${targetCountry}.`
       );
     } catch (error: any) {
       console.error('AI search error:', error);
