@@ -12,6 +12,19 @@ import { PropertyCard } from '@/components/property/PropertyCard';
 import type { EmergencyShelter } from '@/types/emergency';
 import type { Property } from '@/types';
 
+// Safely parse Gemini JSON replies (tolerates wrappers / partials)
+const safeParseJson = (text: string) => {
+  if (!text) return null;
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+};
+
 const EmergencyHousingPage: React.FC = () => {
   const [allShelters, setAllShelters] = useState<EmergencyShelter[]>([]);
   const [displayedShelters, setDisplayedShelters] = useState<EmergencyShelter[]>([]);
@@ -139,11 +152,9 @@ If coordinates are unknown, skip that suggestion. User query: "${aiQuery}"
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
       const clean = text.replace(/```json|```/g, '').trim();
-      let parsed: any;
-      try {
-        parsed = JSON.parse(clean);
-      } catch (err) {
-        console.error('Failed to parse Gemini response', err, text);
+      const parsed: any = safeParseJson(clean);
+      if (!parsed) {
+        console.error('Failed to parse Gemini response', clean);
         setAiMessage('AI отговорът беше невалиден. Опитай отново.');
         return;
       }
