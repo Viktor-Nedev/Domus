@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { getConversations, getMessages, sendMessage, markMessagesAsRead } from '@/db/api';
@@ -100,6 +100,12 @@ const MessagesPage: React.FC = () => {
       : conversation.participant_1;
   };
 
+  const getAvatarUrl = (name?: string, id?: string) => {
+    if (!name && !id) return undefined;
+    const seed = encodeURIComponent(`${name || 'User'}-${id || ''}`);
+    return `https://api.dicebear.com/9.x/initials/svg?seed=${seed}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -143,6 +149,7 @@ const MessagesPage: React.FC = () => {
                       >
                         <div className="flex items-start space-x-3">
                           <Avatar>
+                            <AvatarImage src={getAvatarUrl(otherUser?.name, otherUser?.id)} alt={otherUser?.name || 'User'} />
                             <AvatarFallback>
                               {otherUser?.name?.charAt(0) || '?'}
                             </AvatarFallback>
@@ -179,6 +186,13 @@ const MessagesPage: React.FC = () => {
                 <CardHeader className="border-b">
                   <div className="flex items-center space-x-3">
                     <Avatar>
+                      <AvatarImage
+                        src={getAvatarUrl(
+                          getOtherParticipant(selectedConversation)?.name,
+                          getOtherParticipant(selectedConversation)?.id
+                        )}
+                        alt={getOtherParticipant(selectedConversation)?.name || 'User'}
+                      />
                       <AvatarFallback>
                         {getOtherParticipant(selectedConversation)?.name?.charAt(0) || '?'}
                       </AvatarFallback>

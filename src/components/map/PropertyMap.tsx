@@ -17,16 +17,12 @@ export const PropertyMap: React.FC<PropertyMapProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !mapboxToken) return;
 
     // Initialize Mapbox
-    const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
-    if (!mapboxToken) {
-      console.error('Missing Mapbox token. Set VITE_MAPBOX_API_KEY in your environment.');
-      return;
-    }
     mapboxgl.accessToken = mapboxToken;
 
     // Create map
@@ -58,7 +54,17 @@ export const PropertyMap: React.FC<PropertyMapProps> = ({
         map.current.remove();
       }
     };
-  }, [latitude, longitude, title]);
+  }, [latitude, longitude, title, mapboxToken]);
+
+  if (!mapboxToken) {
+    return (
+      <div className={`${className} flex items-center justify-center border border-dashed border-muted-foreground/40 bg-muted/30 p-6 text-center`}>
+        <p className="text-sm text-muted-foreground">
+          Map preview is unavailable because `VITE_MAPBOX_API_KEY` is not configured.
+        </p>
+      </div>
+    );
+  }
 
   return <div ref={mapContainer} className={className} />;
 };

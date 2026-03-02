@@ -15,18 +15,13 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || map.current || !mapboxToken) return;
 
-    const token = import.meta.env.VITE_MAPBOX_API_KEY;
-    if (!token) {
-      console.error('Missing Mapbox token. Set VITE_MAPBOX_API_KEY in your environment.');
-      return;
-    }
-
-    mapboxgl.accessToken = token;
+    mapboxgl.accessToken = mapboxToken;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
@@ -46,7 +41,7 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       map.current?.remove();
       map.current = null;
     };
-  }, []);
+  }, [mapboxToken]);
 
   // Update markers when shelters change
   useEffect(() => {
@@ -333,6 +328,19 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       }
     }
   }, [shelters, onShelterSelect]);
+
+  if (!mapboxToken) {
+    return (
+      <div
+        className="w-full h-full rounded-lg border-2 border-border shadow-xl flex items-center justify-center bg-muted/30 p-6 text-center"
+        style={{ minHeight: '680px' }}
+      >
+        <p className="text-sm text-muted-foreground">
+          Emergency shelter map is unavailable because `VITE_MAPBOX_API_KEY` is not configured.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div 

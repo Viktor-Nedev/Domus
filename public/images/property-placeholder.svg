@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-label="Property placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8f5e8"/>
+      <stop offset="100%" stop-color="#efe7c5"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="800" fill="url(#bg)"/>
+  <g fill="none" stroke="#c9ad55" stroke-width="20" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M280 460l320-240 320 240"/>
+    <rect x="350" y="450" width="500" height="220" rx="16"/>
+    <path d="M540 670V540h120v130"/>
+    <path d="M420 530h80M700 530h80"/>
+  </g>
+  <text x="600" y="745" text-anchor="middle" fill="#7a5b07" font-family="Arial, sans-serif" font-size="38" font-weight="700">
+    Property image not available
+  </text>
+</svg>

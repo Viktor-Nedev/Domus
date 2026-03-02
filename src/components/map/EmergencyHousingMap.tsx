@@ -19,16 +19,12 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !mapboxToken) return;
 
     // Initialize Mapbox
-    const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
-    if (!mapboxToken) {
-      console.error('Missing Mapbox token. Set VITE_MAPBOX_API_KEY in your environment.');
-      return;
-    }
     mapboxgl.accessToken = mapboxToken;
 
     // Create map
@@ -48,7 +44,7 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
         map.current.remove();
       }
     };
-  }, []);
+  }, [mapboxToken]);
 
   useEffect(() => {
     if (!map.current) return;
@@ -109,6 +105,16 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
       });
     }
   }, [properties, selectedProperty, onPropertySelect]);
+
+  if (!mapboxToken) {
+    return (
+      <div className={`${className} flex items-center justify-center border border-dashed border-muted-foreground/40 bg-muted/30 p-6 text-center`}>
+        <p className="text-sm text-muted-foreground">
+          Map is unavailable because `VITE_MAPBOX_API_KEY` is not configured.
+        </p>
+      </div>
+    );
+  }
 
   return <div ref={mapContainer} className={className} />;
 };

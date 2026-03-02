@@ -60,7 +60,10 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, showMatchS
     }
   };
 
-  const mainPhoto = property.photos && property.photos.length > 0 ? property.photos[0] : '/placeholder-property.jpg';
+  const mainPhoto =
+    property.photos && property.photos.length > 0
+      ? property.photos[0]
+      : '/images/property-placeholder.svg';
 
   return (
     <Link to={`/property/${property.id}`}>
@@ -70,6 +73,9 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({ property, showMatchS
             src={mainPhoto}
             alt={property.title}
             className="w-full h-full object-cover"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = '/images/property-placeholder.svg';
+            }}
           />
           <Button
             variant="ghost"

@@ -15,7 +15,7 @@ Main capabilities:
 - Messaging and profile features.
 
 ## How we built it
-- Main structure was build in M
+#### Main structure was build with Medo AI
 - Frontend: React + TypeScript + Vite.
 - UI: Tailwind CSS + Radix UI + custom components.
 - Charts: Recharts.

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ImagePlus, Link2, Loader2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +14,19 @@ import { createProperty } from '@/db/api';
 import { supabase } from '@/db/supabase';
 import { SUPPORTED_CURRENCIES } from '@/types';
 
+const PROPERTY_IMAGES_BUCKET = 'app-9y1d22zfrldt_property_images';
+const MAX_PHOTOS = 12;
+
+interface LocalPhoto {
+  file: File;
+  previewUrl: string;
+}
+
 const AddPropertyPage: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -36,6 +46,100 @@ const AddPropertyPage: React.FC = () => {
   const [furnished, setFurnished] = useState(false);
   const [elevator, setElevator] = useState(false);
   const [balcony, setBalcony] = useState(false);
+  const [localPhotos, setLocalPhotos] = useState<LocalPhoto[]>([]);
+  const [externalPhotoUrl, setExternalPhotoUrl] = useState('');
+  const [externalPhotos, setExternalPhotos] = useState<string[]>([]);
+
+  const handlePhotoFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const remainingSlots = Math.max(0, MAX_PHOTOS - localPhotos.length - externalPhotos.length);
+    if (remainingSlots === 0) {
+      toast.error(`You can upload up to ${MAX_PHOTOS} photos per property.`);
+      e.target.value = '';
+      return;
+    }
+
+    const selectedFiles = Array.from(files).slice(0, remainingSlots);
+    const preparedFiles: LocalPhoto[] = selectedFiles.map((file) => ({
+      file,
+      previewUrl: URL.createObjectURL(file),
+    }));
+
+    setLocalPhotos((prev) => [...prev, ...preparedFiles]);
+
+    if (selectedFiles.length < files.length) {
+      toast.info(`Only ${remainingSlots} more photo(s) were added due to the ${MAX_PHOTOS}-photo limit.`);
+    }
+
+    e.target.value = '';
+  };
+
+  const removeLocalPhoto = (index: number) => {
+    setLocalPhotos((prev) => {
+      const photoToRemove = prev[index];
+      if (photoToRemove) {
+        URL.revokeObjectURL(photoToRemove.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
+  const addExternalPhoto = () => {
+    const trimmed = externalPhotoUrl.trim();
+    if (!trimmed) return;
+
+    if (localPhotos.length + externalPhotos.length >= MAX_PHOTOS) {
+      toast.error(`You can upload up to ${MAX_PHOTOS} photos per property.`);
+      return;
+    }
+
+    try {
+      new URL(trimmed);
+    } catch {
+      toast.error('Please enter a valid image URL.');
+      return;
+    }
+
+    setExternalPhotos((prev) => [...prev, trimmed]);
+    setExternalPhotoUrl('');
+  };
+
+  const removeExternalPhoto = (index: number) => {
+    setExternalPhotos((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadLocalPhotos = async (userId: string): Promise<string[]> => {
+    if (localPhotos.length === 0) return [];
+
+    setUploadingPhotos(true);
+    try {
+      const uploadedUrls: string[] = [];
+
+      for (const photo of localPhotos) {
+        const extension = photo.file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const filePath = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+
+        const { error } = await supabase.storage
+          .from(PROPERTY_IMAGES_BUCKET)
+          .upload(filePath, photo.file, { cacheControl: '3600', upsert: false });
+
+        if (error) {
+          throw new Error(`Failed to upload "${photo.file.name}": ${error.message}`);
+        }
+
+        const { data } = supabase.storage.from(PROPERTY_IMAGES_BUCKET).getPublicUrl(filePath);
+        uploadedUrls.push(data.publicUrl);
+      }
+
+      localPhotos.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+      setLocalPhotos([]);
+      return uploadedUrls;
+    } finally {
+      setUploadingPhotos(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,6 +157,9 @@ const AddPropertyPage: React.FC = () => {
     setLoading(true);
 
     try {
+      const uploadedPhotoUrls = await uploadLocalPhotos(user.id);
+      const allPhotoUrls = [...externalPhotos, ...uploadedPhotoUrls];
+
       const propertyData = {
         title,
         description,
@@ -71,7 +178,7 @@ const AddPropertyPage: React.FC = () => {
         furnished,
         elevator,
         balcony,
-        photos: [],
+        photos: allPhotoUrls,
       };
 
       const property = await createProperty(propertyData, user.id);
@@ -256,6 +363,100 @@ const AddPropertyPage: React.FC = () => {
             </CardContent>
           </Card>
 
+          {/* Photos */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Photos</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="photos">Upload Photos</Label>
+                <div className="mt-2 rounded-lg border border-dashed border-muted-foreground/40 p-4">
+                  <div className="flex items-center gap-2 mb-3 text-sm text-muted-foreground">
+                    <ImagePlus className="h-4 w-4" />
+                    Select multiple images at once (up to {MAX_PHOTOS})
+                  </div>
+                  <Input
+                    id="photos"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoFilesChange}
+                    disabled={loading || uploadingPhotos}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="photo-url">Or Add Image URL</Label>
+                <div className="mt-2 flex gap-2">
+                  <Input
+                    id="photo-url"
+                    value={externalPhotoUrl}
+                    onChange={(e) => setExternalPhotoUrl(e.target.value)}
+                    placeholder="https://example.com/property-image.jpg"
+                    disabled={loading || uploadingPhotos}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={addExternalPhoto}
+                    disabled={loading || uploadingPhotos || !externalPhotoUrl.trim()}
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Add URL
+                  </Button>
+                </div>
+              </div>
+
+              {(localPhotos.length > 0 || externalPhotos.length > 0) && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {localPhotos.map((photo, index) => (
+                    <div key={`${photo.file.name}-${index}`} className="relative rounded-md overflow-hidden border bg-muted/20">
+                      <img
+                        src={photo.previewUrl}
+                        alt={photo.file.name}
+                        className="w-full h-28 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeLocalPhoto(index)}
+                        className="absolute top-1 right-1 rounded-full bg-background/90 p-1 border"
+                        aria-label="Remove image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <div className="px-2 py-1.5 text-[11px] truncate">
+                        {photo.file.name}
+                      </div>
+                    </div>
+                  ))}
+
+                  {externalPhotos.map((photoUrl, index) => (
+                    <div key={`${photoUrl}-${index}`} className="relative rounded-md overflow-hidden border bg-muted/20">
+                      <img
+                        src={photoUrl}
+                        alt={`External property photo ${index + 1}`}
+                        className="w-full h-28 object-cover"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeExternalPhoto(index)}
+                        className="absolute top-1 right-1 rounded-full bg-background/90 p-1 border"
+                        aria-label="Remove image"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      <div className="px-2 py-1.5 text-[11px] truncate">
+                        External image URL
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Features */}
           <Card>
             <CardHeader>
@@ -301,8 +502,15 @@ const AddPropertyPage: React.FC = () => {
             <Button type="button" variant="outline" onClick={() => navigate('/broker')}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Adding Property...' : 'Add to DOMUS'}
+            <Button type="submit" disabled={loading || uploadingPhotos}>
+              {loading || uploadingPhotos ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Adding Property...
+                </>
+              ) : (
+                'Add to DOMUS'
+              )}
             </Button>
           </div>
         </form>
