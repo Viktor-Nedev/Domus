@@ -1,95 +1,51 @@
-# Welcome to Your Miaoda Project
-Miaoda Application Link URL
-    URL:https://medo.dev/projects/app-9y1d22zfrldt
+# Domus
 
-# Welcome to Your Miaoda Project
+## Inspiration
+Domus was inspired by two real problems happening at the same time: people searching for long-term homes and people needing urgent temporary shelter during crises. We wanted one platform that supports both everyday housing and emergency housing with AI-assisted discovery.
 
-## Project Info
+## What it does
+Domus is a real-estate and emergency-housing platform with two main flows:
+- Resident flow: browse properties, use Home Finder, save listings, and view dashboard insights.
+- Housing Partner flow: add new properties and add emergency shelter markers for crisis support.
 
-## Project Directory
+Main capabilities:
+- Property listing and filtering by location and criteria.
+- Emergency Housing map with AI-assisted country/city discovery.
+- Dashboard market analytics with AI-generated price trends.
+- Messaging and profile features.
 
-```
-├── README.md # Documentation
-├── components.json # Component library configuration
-├── index.html # Entry file
-├── package.json # Package management
-├── postcss.config.js # PostCSS configuration
-├── public # Static resources directory
-│   ├── favicon.png # Icon
-│   └── images # Image resources
-├── src # Source code directory
-│   ├── App.tsx # Entry file
-│   ├── components # Components directory
-│   ├── context # Context directory
-│   ├── db # Database configuration directory
-│   ├── hooks # Common hooks directory
-│   ├── index.css # Global styles
-│   ├── layout # Layout directory
-│   ├── lib # Utility library directory
-│   ├── main.tsx # Entry file
-│   ├── routes.tsx # Routing configuration
-│   ├── pages # Pages directory
-│   ├── services # Database interaction directory
-│   ├── types # Type definitions directory
-├── tsconfig.app.json # TypeScript frontend configuration file
-├── tsconfig.json # TypeScript configuration file
-├── tsconfig.node.json # TypeScript Node.js configuration file
-└── vite.config.ts # Vite configuration file
-```
+## How we built it
+- Main structure was build in M
+- Frontend: React + TypeScript + Vite.
+- UI: Tailwind CSS + Radix UI + custom components.
+- Charts: Recharts.
+- Database/Auth: Supabase.
+- AI integrations: Gemini API for country/location parsing and market trend generation.
+- Deployment target: Vercel with `dist` output.
 
-## Tech Stack
+## Challenges we ran into
+- Gemini responses were sometimes malformed or truncated JSON.
+- Model compatibility differences caused payload/field errors.
+- Environment mismatches between local and Vercel (missing `VITE_*` variables).
+- Role UX confusion (`buyer`/`broker`) and permission boundaries for creating resources.
+- Keeping map AI results complete and reliable for country-level searches.
 
-Vite, TypeScript, React, Supabase
+## Accomplishments that we're proud of
+- Stabilized AI parsing with retries and safe JSON extraction.
+- Improved map AI matching for country and city queries.
+- Added role-based shelter creation flow for Housing Partners.
+- Upgraded dashboard with richer market stats and improved visual hierarchy.
+- Simplified naming/UX: Home Finder, Resident, Housing Partner.
 
-## Development Guidelines
+## What we learned
+- AI features need strict output constraints plus robust parsing fallbacks.
+- Clear role naming significantly improves product usability.
+- Deployment reliability depends on explicit environment and build configuration.
+- Data accuracy for geospatial search requires both AI extraction and deterministic fallback matching.
 
-### How to edit code locally?
-
-You can choose [VSCode](https://code.visualstudio.com/Download) or any IDE you prefer. The only requirement is to have Node.js and npm installed.
-
-### Environment Requirements
-
-```
-# Node.js ≥ 20
-# npm ≥ 10
-Example:
-# node -v   # v20.18.3
-# npm -v    # 10.8.2
-```
-
-### Installing Node.js on Windows
-
-```
-# Step 1: Visit the Node.js official website: https://nodejs.org/, click download. The website will automatically suggest a suitable version (32-bit or 64-bit) for your system.
-# Step 2: Run the installer: Double-click the downloaded installer to run it.
-# Step 3: Complete the installation: Follow the installation wizard to complete the process.
-# Step 4: Verify installation: Open Command Prompt (cmd) or your IDE terminal, and type `node -v` and `npm -v` to check if Node.js and npm are installed correctly.
-```
-
-### Installing Node.js on macOS
-
-```
-# Step 1: Using Homebrew (Recommended method): Open Terminal. Type the command `brew install node` and press Enter. If Homebrew is not installed, you need to install it first by running the following command in Terminal:
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-Alternatively, use the official installer: Visit the Node.js official website. Download the macOS .pkg installer. Open the downloaded .pkg file and follow the prompts to complete the installation.
-# Step 2: Verify installation: Open Command Prompt (cmd) or your IDE terminal, and type `node -v` and `npm -v` to check if Node.js and npm are installed correctly.
-```
-
-### After installation, follow these steps:
-
-```
-# Step 1: Download the code package
-# Step 2: Extract the code package
-# Step 3: Open the code package with your IDE and navigate into the code directory
-# Step 4: In the IDE terminal, run the command to install dependencies: npm i
-# Step 5: In the IDE terminal, run the command to start the development server: npx vite --host 127.0.0.1
-# Step 6: Open the displayed local URL in your browser (e.g., http://127.0.0.1:5173)
-```
-
-### How to develop backend services?
-
-Configure environment variables and install relevant dependencies.If you need to use a database, please use the official version of Supabase.
-
-## Learn More
-
-You can also check the help documentation: Download and Building the app（ [https://intl.cloud.baidu.com/en/doc/MIAODA/s/download-and-building-the-app-en](https://intl.cloud.baidu.com/en/doc/MIAODA/s/download-and-building-the-app-en)）to learn more detailed content.
+## What's next for Domus
+- Replace map placeholder with full interactive Mapbox clustering and marker layers.
+- Add server-side AI endpoints to protect API keys and improve response validation.
+- Add country synonym dictionaries and multilingual query support.
+- Expand emergency shelter moderation and verification workflows.
+- Add automated tests for AI parsing, role-based access, and deployment checks.

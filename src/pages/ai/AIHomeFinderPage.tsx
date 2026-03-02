@@ -30,6 +30,7 @@ interface AIQuestions {
 
 const AIHomeFinderPage: React.FC = () => {
   const navigate = useNavigate();
+  const actionButtonClass = 'bg-yellow-500 hover:bg-yellow-600 text-black';
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [recommendations, setRecommendations] = useState<Property[]>([]);
@@ -111,7 +112,7 @@ const AIHomeFinderPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50/70 via-background to-background">
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8 text-center">
@@ -133,7 +134,7 @@ const AIHomeFinderPage: React.FC = () => {
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div 
-                className="h-full bg-primary transition-all duration-300"
+                className="h-full bg-yellow-500 transition-all duration-300"
                 style={{ width: `${(step / 4) * 100}%` }}
               />
             </div>
@@ -146,7 +147,7 @@ const AIHomeFinderPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-6 w-6 text-primary" />
+                  <DollarSign className="h-6 w-6 text-yellow-600" />
                   Budget & Location
                 </CardTitle>
               </CardHeader>
@@ -162,7 +163,7 @@ const AIHomeFinderPage: React.FC = () => {
                       step={10000}
                     />
                     <div className="text-center">
-                      <span className="text-2xl font-bold text-primary">
+                      <span className="text-2xl font-bold text-yellow-700">
                         €{answers.budget.toLocaleString()}
                       </span>
                     </div>
@@ -179,7 +180,7 @@ const AIHomeFinderPage: React.FC = () => {
                     onChange={(e) => setAnswers({ ...answers, location: e.target.value })}
                   />
                 </div>
-                <Button onClick={handleNext} className="w-full" size="lg">
+                <Button onClick={handleNext} className={`w-full ${actionButtonClass}`} size="lg">
                   Next Step
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
@@ -192,7 +193,7 @@ const AIHomeFinderPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Home className="h-6 w-6 text-primary" />
+                  <Home className="h-6 w-6 text-yellow-600" />
                   Property Type & Size
                 </CardTitle>
               </CardHeader>
@@ -239,7 +240,7 @@ const AIHomeFinderPage: React.FC = () => {
                     <ArrowLeft className="mr-2 h-5 w-5" />
                     Back
                   </Button>
-                  <Button onClick={handleNext} className="flex-1">
+                  <Button onClick={handleNext} className={`flex-1 ${actionButtonClass}`}>
                     Next Step
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -253,7 +254,7 @@ const AIHomeFinderPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Heart className="h-6 w-6 text-primary" />
+                  <Heart className="h-6 w-6 text-yellow-600" />
                   Purpose & Lifestyle
                 </CardTitle>
               </CardHeader>
@@ -283,7 +284,7 @@ const AIHomeFinderPage: React.FC = () => {
                     <ArrowLeft className="mr-2 h-5 w-5" />
                     Back
                   </Button>
-                  <Button onClick={handleNext} className="flex-1">
+                  <Button onClick={handleNext} className={`flex-1 ${actionButtonClass}`}>
                     Next Step
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
@@ -297,7 +298,7 @@ const AIHomeFinderPage: React.FC = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-6 w-6 text-primary" />
+                  <Sparkles className="h-6 w-6 text-yellow-600" />
                   Lifestyle Preferences
                 </CardTitle>
               </CardHeader>
@@ -340,7 +341,7 @@ const AIHomeFinderPage: React.FC = () => {
                     <ArrowLeft className="mr-2 h-5 w-5" />
                     Back
                   </Button>
-                  <Button onClick={handleNext} className="flex-1" disabled={loading}>
+                  <Button onClick={handleNext} className={`flex-1 ${actionButtonClass}`} disabled={loading}>
                     {loading ? 'Finding Your Perfect Home...' : 'Find My Perfect Home'}
                     <Sparkles className="ml-2 h-5 w-5" />
                   </Button>
@@ -353,10 +354,10 @@ const AIHomeFinderPage: React.FC = () => {
           {step === 5 && (
             <div className="space-y-6">
               {/* AI Explanation */}
-              <Card className="bg-gradient-to-br from-primary/10 to-secondary/10 border-primary/20">
+              <Card className="bg-gradient-to-br from-yellow-100/80 to-yellow-50/70 border-yellow-200">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Bot className="h-6 w-6 text-primary" />
+                    <Bot className="h-6 w-6 text-yellow-600" />
                     AI Analysis
                   </CardTitle>
                 </CardHeader>
@@ -395,7 +396,7 @@ const AIHomeFinderPage: React.FC = () => {
                 <Button onClick={() => setStep(1)} variant="outline" className="flex-1">
                   Start New Search
                 </Button>
-                <Button onClick={() => navigate('/properties')} className="flex-1">
+                <Button onClick={() => navigate('/properties')} className={`flex-1 ${actionButtonClass}`}>
                   Browse All Properties
                 </Button>
               </div>

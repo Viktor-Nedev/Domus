@@ -257,6 +257,13 @@ Rules:
 
   const latestPrice = priceTrend.at(-1)?.price;
   const firstPrice = priceTrend[0]?.price;
+  const currencyPrefix = trendCurrency === 'EUR' ? '€' : trendCurrency;
+  const peakYoY =
+    yoySeries.length > 0 ? Math.max(...yoySeries.map((item) => item.change)) : null;
+  const avgYoY =
+    yoySeries.length > 0
+      ? (yoySeries.reduce((sum, item) => sum + item.change, 0) / yoySeries.length).toFixed(1)
+      : null;
   const cagr =
     priceTrend.length >= 2
       ? (
@@ -384,6 +391,7 @@ Rules:
                 <div className="lg:col-span-2 space-y-4">
                   <div className="h-72">
                     <ChartContainer
+                      className="h-full w-full !aspect-auto"
                       config={
                         {
                           price: { label: '€/m²', color: 'hsl(var(--primary))' },
@@ -397,7 +405,7 @@ Rules:
                           <YAxis
                             dataKey="price"
                             stroke="var(--muted-foreground)"
-                            tickFormatter={(v) => `${trendCurrency}${v}`}
+                            tickFormatter={(v) => `${currencyPrefix}${Number(v).toLocaleString()}`}
                           />
                           <Tooltip content={<ChartTooltipContent />} />
                           <Line
@@ -414,6 +422,7 @@ Rules:
                   </div>
                   <div className="h-60">
                     <ChartContainer
+                      className="h-full w-full !aspect-auto"
                       config={
                         {
                           change: { label: 'YoY %', color: 'hsl(var(--secondary))' },
@@ -448,7 +457,7 @@ Rules:
                     </CardHeader>
                     <CardContent>
                       <p className="text-3xl font-bold">
-                        {trendCurrency}
+                        {currencyPrefix}
                         {latestPrice?.toLocaleString() || '—'}
                       </p>
                       <p className="text-xs text-muted-foreground">per m² (most recent year)</p>
@@ -478,6 +487,28 @@ Rules:
                     <CardContent>
                       <p className="text-3xl font-bold">{priceTrend.length}</p>
                       <p className="text-xs text-muted-foreground">years of history</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Peak YoY Growth
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">{peakYoY !== null ? `${peakYoY}%` : '—'}</p>
+                      <p className="text-xs text-muted-foreground">highest annual change</p>
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm text-muted-foreground">
+                        Avg YoY Change
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-3xl font-bold">{avgYoY !== null ? `${avgYoY}%` : '—'}</p>
+                      <p className="text-xs text-muted-foreground">average annual growth</p>
                     </CardContent>
                   </Card>
                 </div>
