@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Search, SlidersHorizontal } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Search, SlidersHorizontal, Plus } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PropertyCard } from '@/components/property/PropertyCard';
 import { supabase } from '@/db/supabase';
 import type { Property } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const AllPropertiesPage: React.FC = () => {
+  const { profile } = useAuth();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,11 +78,21 @@ const AllPropertiesPage: React.FC = () => {
     <div className="min-h-screen bg-background">
       <div className="container py-8">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between gap-4">
+          <div>
           <h1 className="text-4xl font-bold mb-2 gradient-text">All Properties</h1>
           <p className="text-muted-foreground">
             Browse {properties.length} properties from around the world
           </p>
+          </div>
+          {profile?.account_type === 'broker' && (
+            <Link to="/broker/add-property">
+              <Button className="bg-yellow-500 hover:bg-yellow-600 text-black">
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Property
+              </Button>
+            </Link>
+          )}
         </div>
 
         {/* Filters */}

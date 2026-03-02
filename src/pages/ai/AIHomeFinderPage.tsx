@@ -116,11 +116,11 @@ const AIHomeFinderPage: React.FC = () => {
         {/* Header */}
         <div className="mb-8 text-center">
           <div className="flex items-center justify-center mb-4">
-            <Bot className="h-12 w-12 text-primary" />
+            <Bot className="h-12 w-12 text-yellow-500" />
           </div>
-          <h1 className="text-4xl font-bold mb-2 gradient-text">AI Perfect Home Finder</h1>
+          <h1 className="text-4xl font-bold mb-2 text-yellow-700">Perfect Home Finder</h1>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            Answer a few questions and let our AI find your perfect property match
+            Answer a few questions and get your best property match
           </p>
         </div>
 

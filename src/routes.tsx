@@ -45,7 +45,7 @@ const routes: RouteConfig[] = [
     element: <EmergencyHousingPage />
   },
   {
-    name: 'AI Home Finder',
+    name: 'Home Finder',
     path: '/ai-finder',
     element: <AIHomeFinderPage />
   },
@@ -60,7 +60,7 @@ const routes: RouteConfig[] = [
     element: <ReclaimHelperDashboard />
   },
   {
-    name: 'Buyer Dashboard',
+    name: 'Resident Dashboard',
     path: '/dashboard',
     element: <BuyerDashboard />
   },
@@ -75,7 +75,7 @@ const routes: RouteConfig[] = [
     element: <AIPropertyMatchPage />
   },
   {
-    name: 'Broker Dashboard',
+    name: 'Housing Partner Dashboard',
     path: '/broker',
     element: <BrokerDashboard />
   },

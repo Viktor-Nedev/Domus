@@ -101,7 +101,6 @@ const BuyerDashboardRedesigned: React.FC = () => {
         generationConfig: {
           temperature,
           maxOutputTokens: maxTokens,
-          responseMimeType: 'application/json',
         },
       }),
     });
@@ -279,11 +278,11 @@ Rules:
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50/60 via-background to-background">
       <div className="container py-8">
         {/* Welcome Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">
+          <h1 className="text-4xl font-bold mb-2 text-yellow-700">
             Welcome back, {profile?.name}!
           </h1>
           <p className="text-muted-foreground">
@@ -300,7 +299,7 @@ Rules:
                   <p className="text-sm text-muted-foreground">Saved Properties</p>
                   <p className="text-3xl font-bold">{stats.savedCount}</p>
                 </div>
-                <Heart className="h-8 w-8 text-primary" />
+                <Heart className="h-8 w-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
@@ -311,7 +310,7 @@ Rules:
                   <p className="text-sm text-muted-foreground">New Matches</p>
                   <p className="text-3xl font-bold">{stats.newMatches}</p>
                 </div>
-                <Sparkles className="h-8 w-8 text-primary" />
+                <Sparkles className="h-8 w-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
@@ -322,7 +321,7 @@ Rules:
                   <p className="text-sm text-muted-foreground">Recently Viewed</p>
                   <p className="text-3xl font-bold">{stats.viewedCount}</p>
                 </div>
-                <Eye className="h-8 w-8 text-primary" />
+                <Eye className="h-8 w-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
@@ -333,14 +332,14 @@ Rules:
                   <p className="text-sm text-muted-foreground">Unread Messages</p>
                   <p className="text-3xl font-bold">{stats.unreadMessages}</p>
                 </div>
-                <MessageSquare className="h-8 w-8 text-primary" />
+                <MessageSquare className="h-8 w-8 text-yellow-500" />
               </div>
             </CardContent>
           </Card>
         </div>
 
         {/* AI Market Trends */}
-        <Card className="mb-8">
+        <Card className="mb-8 border-yellow-200 bg-yellow-50/40">
           <CardHeader className="flex flex-col gap-2">
             <div className="flex items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-2 text-xl">
@@ -366,7 +365,7 @@ Rules:
               <Button
                 onClick={handleAiMarketSearch}
                 disabled={aiLoading}
-                className="h-11 px-5"
+                className="h-11 px-5 bg-yellow-500 hover:bg-yellow-600 text-black"
               >
                 {aiLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -494,10 +493,10 @@ Rules:
         {/* Quick Actions */}
         <div className="grid md:grid-cols-3 gap-6 mb-8">
           <Link to="/ai-finder">
-            <Card className="hover:border-primary transition-colors cursor-pointer h-full">
+            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
               <CardHeader>
-                <Sparkles className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>AI Home Finder</CardTitle>
+                <Sparkles className="h-8 w-8 text-yellow-500 mb-2" />
+                <CardTitle>Home Finder</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground">
@@ -507,9 +506,9 @@ Rules:
             </Card>
           </Link>
           <Link to="/map">
-            <Card className="hover:border-primary transition-colors cursor-pointer h-full">
+            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
               <CardHeader>
-                <Map className="h-8 w-8 text-primary mb-2" />
+                <Map className="h-8 w-8 text-yellow-500 mb-2" />
                 <CardTitle>Map Explorer</CardTitle>
               </CardHeader>
               <CardContent>
@@ -520,9 +519,9 @@ Rules:
             </Card>
           </Link>
           <Link to="/market">
-            <Card className="hover:border-primary transition-colors cursor-pointer h-full">
+            <Card className="hover:border-yellow-400 transition-colors cursor-pointer h-full">
               <CardHeader>
-                <BarChart3 className="h-8 w-8 text-primary mb-2" />
+                <BarChart3 className="h-8 w-8 text-yellow-500 mb-2" />
                 <CardTitle>Market Analytics</CardTitle>
               </CardHeader>
               <CardContent>
@@ -539,7 +538,7 @@ Rules:
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Heart className="h-6 w-6 text-primary" />
+                <Heart className="h-6 w-6 text-yellow-500" />
                 Your Saved Properties
               </h2>
               <Link to="/dashboard/saved">
@@ -559,7 +558,7 @@ Rules:
           <div className="mb-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
-                <Sparkles className="h-6 w-6 text-primary" />
+                <Sparkles className="h-6 w-6 text-yellow-500" />
                 Recommended for You
               </h2>
               <Link to="/properties">
@@ -569,7 +568,7 @@ Rules:
             <div className="grid md:grid-cols-3 gap-6">
               {recommendations.map((property) => (
                 <div key={property.id} className="relative">
-                  <Badge className="absolute top-4 right-4 z-10 bg-primary">
+                  <Badge className="absolute top-4 right-4 z-10 bg-yellow-500 text-black">
                     {property.domus_score}/100
                   </Badge>
                   <PropertyCard property={property} />
@@ -591,7 +590,7 @@ Rules:
             <div className="space-y-4">
               <div className="flex items-center justify-between py-3 border-b">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-primary" />
+                  <div className="w-2 h-2 rounded-full bg-yellow-500" />
                   <div>
                     <p className="font-medium">Saved a property in Sofia</p>
                     <p className="text-sm text-muted-foreground">2 hours ago</p>
@@ -611,7 +610,7 @@ Rules:
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-muted" />
                   <div>
-                    <p className="font-medium">Received message from broker</p>
+                    <p className="font-medium">Received message from housing partner</p>
                     <p className="text-sm text-muted-foreground">2 days ago</p>
                   </div>
                 </div>
@@ -633,7 +632,7 @@ Rules:
                 <Link to="/ai-finder">
                   <Button>
                     <Sparkles className="mr-2 h-4 w-4" />
-                    AI Home Finder
+                    Home Finder
                   </Button>
                 </Link>
                 <Link to="/properties">

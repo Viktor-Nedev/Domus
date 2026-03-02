@@ -52,7 +52,7 @@ const BrokerDashboard: React.FC = () => {
               Welcome, {profile?.name}
             </h1>
             <p className="text-muted-foreground">
-              {profile?.agency_name || 'DOMUS Broker Dashboard'}
+              {profile?.agency_name || 'DOMUS Housing Partner Dashboard'}
             </p>
           </div>
           <Link to="/broker/add-property">

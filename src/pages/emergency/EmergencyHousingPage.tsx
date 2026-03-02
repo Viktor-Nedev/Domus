@@ -5,12 +5,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { supabase } from '@/db/supabase';
 import { EmergencyShelterMap } from '@/components/map/EmergencyShelterMap';
 import { PropertyCard } from '@/components/property/PropertyCard';
 import type { EmergencyShelter } from '@/types/emergency';
 import type { Property } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Safely parse Gemini JSON replies (tolerates wrappers / partials)
 const safeParseJson = (text: string) => {
@@ -26,6 +26,7 @@ const safeParseJson = (text: string) => {
 };
 
 const EmergencyHousingPage: React.FC = () => {
+  const { profile } = useAuth();
   const [allShelters, setAllShelters] = useState<EmergencyShelter[]>([]);
   const [displayedShelters, setDisplayedShelters] = useState<EmergencyShelter[]>([]);
   const [searchCountry, setSearchCountry] = useState('all');
@@ -34,7 +35,16 @@ const EmergencyHousingPage: React.FC = () => {
   const [aiQuery, setAiQuery] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
-  const [aiGeneratedShelters, setAiGeneratedShelters] = useState<EmergencyShelter[]>([]);
+  const [savingShelter, setSavingShelter] = useState(false);
+  const [newShelter, setNewShelter] = useState({
+    name: '',
+    country: '',
+    city: '',
+    address: '',
+    latitude: '',
+    longitude: '',
+    description: '',
+  });
 
   const callGemini = async (prompt: string, apiKey: string, maxOutputTokens = 1024) => {
     // List models (v1) and pick a supported one
@@ -74,7 +84,6 @@ const EmergencyHousingPage: React.FC = () => {
         generationConfig: {
           temperature: 0.2,
           maxOutputTokens,
-          responseMimeType: 'application/json',
         },
       }),
     });
@@ -113,6 +122,59 @@ const EmergencyHousingPage: React.FC = () => {
     }
   };
 
+  const handleAddShelter = async () => {
+    if (profile?.account_type !== 'broker') return;
+    if (!newShelter.name || !newShelter.country || !newShelter.city || !newShelter.address) {
+      setAiMessage('Попълни име, държава, град и адрес за новото убежище.');
+      return;
+    }
+
+    const latitude = Number(newShelter.latitude);
+    const longitude = Number(newShelter.longitude);
+    if (Number.isNaN(latitude) || Number.isNaN(longitude)) {
+      setAiMessage('Въведи валидни координати за новото убежище.');
+      return;
+    }
+
+    setSavingShelter(true);
+    try {
+      const { error } = await supabase.from('emergency_shelters').insert({
+        name: newShelter.name,
+        country: newShelter.country,
+        city: newShelter.city,
+        address: newShelter.address,
+        latitude,
+        longitude,
+        description: newShelter.description || null,
+        shelter_type: 'emergency_shelter',
+        status: 'active',
+        accepts_families: true,
+        accepts_pets: false,
+        wheelchair_accessible: false,
+        crisis_types: ['humanitarian_crisis'],
+      });
+
+      if (error) throw error;
+
+      setNewShelter({
+        name: '',
+        country: '',
+        city: '',
+        address: '',
+        latitude: '',
+        longitude: '',
+        description: '',
+      });
+      setAiMessage('Новото убежище беше добавено успешно.');
+      await loadAllShelters();
+    } catch (error) {
+      console.error('Error adding shelter:', error);
+      setAiMessage('Неуспешно добавяне на убежище. Провери правата в Supabase.');
+    } finally {
+      setSavingShelter(false);
+    }
+  };
+
   const handleAiSearch = async () => {
     if (!aiQuery.trim()) {
       setAiMessage('Въведи държава или регион за AI търсене.');
@@ -136,7 +198,12 @@ User query: "${aiQuery}"`;
 
       const countryData = await callGemini(countryPrompt, geminiApiKey, 256);
       const countryText = countryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const countryParsed: any = safeParseJson(countryText);
+      let countryParsed: any = safeParseJson(countryText);
+      if (!countryParsed) {
+        const retryCountryData = await callGemini(`JSON only: {"countries":["Bulgaria"]}. Query: ${aiQuery}`, geminiApiKey, 256);
+        const retryCountryText = retryCountryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        countryParsed = safeParseJson(retryCountryText);
+      }
       if (!countryParsed) {
         console.error('Failed to parse Gemini country response', countryText);
         setAiMessage('AI не върна валидна държава. Опитай отново.');
@@ -172,7 +239,16 @@ Skip entries without coordinates.`;
 
       const suggestionsData = await callGemini(suggestionsPrompt, geminiApiKey, 1536);
       const suggestionsText = suggestionsData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const suggestionsParsed: any = safeParseJson(suggestionsText);
+      let suggestionsParsed: any = safeParseJson(suggestionsText);
+      if (!suggestionsParsed) {
+        const retrySuggestionsData = await callGemini(
+          `JSON only for ${targetCountry}: {"suggestions":[{"name":"Emergency Shelter","city":"City","country":"${targetCountry}","address":"Address","latitude":42.0,"longitude":23.0}]}`,
+          geminiApiKey,
+          1024
+        );
+        const retrySuggestionsText = retrySuggestionsData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        suggestionsParsed = safeParseJson(retrySuggestionsText);
+      }
       const suggestions: any[] = Array.isArray(suggestionsParsed?.suggestions)
         ? suggestionsParsed.suggestions
         : [];
@@ -204,7 +280,6 @@ Skip entries without coordinates.`;
         })
         .filter(Boolean) as EmergencyShelter[];
 
-      setAiGeneratedShelters(aiShelters);
       setDisplayedShelters([...filteredShelters, ...aiShelters]);
 
       const { data: propertyData } = await supabase
@@ -302,6 +377,62 @@ Skip entries without coordinates.`;
             </div>
           </CardContent>
         </Card>
+
+        {profile?.account_type === 'broker' && (
+          <Card className="mb-6 border-yellow-300 bg-yellow-50/40 shadow-md">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xl text-yellow-700">
+                Housing Partner: Add Emergency Shelter Marker
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid md:grid-cols-2 gap-3">
+                <Input
+                  placeholder="Shelter name"
+                  value={newShelter.name}
+                  onChange={(e) => setNewShelter({ ...newShelter, name: e.target.value })}
+                />
+                <Input
+                  placeholder="Country"
+                  value={newShelter.country}
+                  onChange={(e) => setNewShelter({ ...newShelter, country: e.target.value })}
+                />
+                <Input
+                  placeholder="City"
+                  value={newShelter.city}
+                  onChange={(e) => setNewShelter({ ...newShelter, city: e.target.value })}
+                />
+                <Input
+                  placeholder="Address"
+                  value={newShelter.address}
+                  onChange={(e) => setNewShelter({ ...newShelter, address: e.target.value })}
+                />
+                <Input
+                  placeholder="Latitude"
+                  value={newShelter.latitude}
+                  onChange={(e) => setNewShelter({ ...newShelter, latitude: e.target.value })}
+                />
+                <Input
+                  placeholder="Longitude"
+                  value={newShelter.longitude}
+                  onChange={(e) => setNewShelter({ ...newShelter, longitude: e.target.value })}
+                />
+              </div>
+              <Input
+                placeholder="Description (optional)"
+                value={newShelter.description}
+                onChange={(e) => setNewShelter({ ...newShelter, description: e.target.value })}
+              />
+              <Button
+                className="bg-yellow-500 hover:bg-yellow-600 text-black"
+                onClick={handleAddShelter}
+                disabled={savingShelter}
+              >
+                {savingShelter ? 'Saving...' : 'Add Shelter Marker'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Map Section - PRIMARY FOCUS */}
         <Card className="shadow-xl mb-6">

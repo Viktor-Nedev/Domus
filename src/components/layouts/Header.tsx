@@ -69,7 +69,7 @@ export const Header: React.FC = () => {
               <Link to="/ai-finder">
                 <Button variant="ghost">
                   <Sparkles className="mr-2 h-4 w-4" />
-                  AI Finder
+                  Home Finder
                 </Button>
               </Link>
               <Link to="/messages" className="relative">

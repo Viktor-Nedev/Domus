@@ -141,11 +141,11 @@ const AuthPage: React.FC = () => {
                 <RadioGroup value={accountType} onValueChange={(v) => setAccountType(v as 'buyer' | 'broker')}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="buyer" id="buyer" />
-                    <Label htmlFor="buyer" className="font-normal">Buyer</Label>
+                    <Label htmlFor="buyer" className="font-normal">Resident</Label>
                   </div>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="broker" id="broker" />
-                    <Label htmlFor="broker" className="font-normal">Broker</Label>
+                    <Label htmlFor="broker" className="font-normal">Housing Partner</Label>
                   </div>
                 </RadioGroup>
               </div>

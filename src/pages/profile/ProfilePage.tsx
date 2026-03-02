@@ -109,7 +109,7 @@ const ProfilePage: React.FC = () => {
               <div>
                 <Label>Account Type</Label>
                 <Input
-                  value={profile.account_type === 'broker' ? 'Broker' : 'Buyer'}
+                  value={profile.account_type === 'broker' ? 'Housing Partner' : 'Resident'}
                   disabled
                   className="bg-muted"
                 />
