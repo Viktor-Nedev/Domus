@@ -79,43 +79,44 @@ const MapExplorerPage: React.FC = () => {
     }
   };
 
+  const GEMINI_MODELS = [
+    'models/gemini-1.5-flash-002',
+    'models/gemini-1.5-flash',
+    'models/gemini-1.5-pro',
+    'models/gemini-pro',
+  ];
+
   const callGeminiLocation = async (query: string, apiKey: string) => {
-    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
-    if (!listRes.ok) {
-      const errText = await listRes.text().catch(() => '');
-      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
-    }
-    const list = await listRes.json();
-    const models: string[] = list?.models?.map((m: any) => m.name).filter((n: string) => n) || [];
-
-    const pick =
-      models.find((m) => m.includes('gemini-2.5-flash')) ||
-      models.find((m) => m.includes('gemini-1.5-flash')) ||
-      models.find((m) => m.includes('gemini-pro')) ||
-      models[0];
-
-    if (!pick) throw new Error('No Gemini models available');
-    const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
-
     const prompt = `Return JSON only: {"country":"", "city":""}. Parse location from query: "${query}".`;
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.1, maxOutputTokens: 256 },
-        }),
+    const errors: string[] = [];
+
+    for (const modelName of GEMINI_MODELS) {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.1, maxOutputTokens: 256 },
+          }),
+        }
+      );
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        return safeParseJson(text);
       }
-    );
-    if (!res.ok) {
+
       const errText = await res.text().catch(() => '');
-      throw new Error(`Gemini location error: ${res.status} ${errText}`);
+      if (res.status === 403) {
+        throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      errors.push(`${modelName}: ${res.status} ${errText}`);
     }
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    return safeParseJson(text);
+
+    throw new Error(`Gemini location error: ${errors.join(' | ')}`);
   };
 
   const handleAiAssist = async () => {

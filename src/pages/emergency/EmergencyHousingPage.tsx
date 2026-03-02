@@ -46,54 +46,44 @@ const EmergencyHousingPage: React.FC = () => {
     description: '',
   });
 
+  const GEMINI_MODELS = [
+    'models/gemini-1.5-flash-002',
+    'models/gemini-1.5-flash',
+    'models/gemini-1.5-pro',
+    'models/gemini-pro',
+  ];
+
   const callGemini = async (prompt: string, apiKey: string, maxOutputTokens = 1024) => {
-    // List models (v1) and pick a supported one
-    const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
-    );
-    if (!listRes.ok) {
-      const errText = await listRes.text().catch(() => '');
-      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
-    }
-    const list = await listRes.json();
-    const models: string[] =
-      list?.models?.map((m: any) => m.name).filter((n: string) => n) || [];
+    const errors: string[] = [];
+    for (const modelName of GEMINI_MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
 
-    const pick =
-      models.find((m) => m.includes('gemini-1.5-flash-002')) ||
-      models.find((m) => m.includes('gemini-1.5-flash-001')) ||
-      models.find((m) => m.includes('gemini-1.5-flash')) ||
-      models.find((m) => m.includes('gemini-1.5-pro')) ||
-      models.find((m) => m.includes('gemini-pro')) ||
-      models[0];
-
-    if (!pick) throw new Error('Gemini API error: no available models returned');
-
-    const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
-
-    const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens,
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens,
+          },
+        }),
+      });
 
-    if (!res.ok) {
+      if (res.ok) {
+        return res.json();
+      }
+
       const errText = await res.text().catch(() => '');
-      throw new Error(`Gemini API error (${modelName}): ${res.status} ${errText}`);
+      if (res.status === 403) {
+        throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      errors.push(`${modelName}: ${res.status} ${errText}`);
     }
-
-    return res.json();
+    throw new Error(`Gemini API error: ${errors.join(' | ')}`);
   };
 
   // Load ALL shelters on mount
@@ -294,9 +284,13 @@ Skip entries without coordinates.`;
       setAiMessage(
         `AI detected country: ${targetCountry} (${filteredShelters.length} in database, ${aiShelters.length} AI suggestions)`
       );
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI search error:', error);
-      setAiMessage('An error occurred during AI search.');
+      const message =
+        error?.message?.includes('Gemini API key')
+          ? 'AI key is blocked or invalid. Set a new VITE_GEMINI_API_KEY and redeploy.'
+          : 'An error occurred during AI search.';
+      setAiMessage(message);
     } finally {
       setAiLoading(false);
     }

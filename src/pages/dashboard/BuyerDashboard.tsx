@@ -59,58 +59,51 @@ const BuyerDashboardRedesigned: React.FC = () => {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessage, setAiMessage] = useState<string | null>(null);
 
+  const GEMINI_MODELS = [
+    'models/gemini-1.5-flash-002',
+    'models/gemini-1.5-flash',
+    'models/gemini-1.5-pro',
+    'models/gemini-pro',
+  ];
+
   const callGemini = async (
     prompt: string,
     apiKey: string,
     temperature = 0.3,
     maxTokens = 1024
   ) => {
-    const listRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`
-    );
-    if (!listRes.ok) {
-      const errText = await listRes.text().catch(() => '');
-      throw new Error(`Gemini list error: ${listRes.status} ${errText}`);
-    }
-    const list = await listRes.json();
-    const models: string[] =
-      list?.models?.map((m: any) => m.name).filter((n: string) => n) || [];
+    const errors: string[] = [];
 
-    const pick =
-      models.find((m) => m.includes('gemini-1.5-flash-002')) ||
-      models.find((m) => m.includes('gemini-1.5-flash-001')) ||
-      models.find((m) => m.includes('gemini-1.5-flash')) ||
-      models.find((m) => m.includes('gemini-1.5-pro')) ||
-      models.find((m) => m.includes('gemini-pro')) ||
-      models[0];
+    for (const modelName of GEMINI_MODELS) {
+      const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
 
-    if (!pick) throw new Error('Gemini API error: no available models returned');
-
-    const modelName = pick.startsWith('models/') ? pick : `models/${pick}`;
-
-    const url = `https://generativelanguage.googleapis.com/v1/${modelName}:generateContent?key=${apiKey}`;
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature,
-          maxOutputTokens: maxTokens,
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
         },
-      }),
-    });
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature,
+            maxOutputTokens: maxTokens,
+          },
+        }),
+      });
 
-    if (!res.ok) {
+      if (res.ok) {
+        return res.json();
+      }
+
       const errText = await res.text().catch(() => '');
-      throw new Error(`Gemini API error (${modelName}): ${res.status} ${errText}`);
+      if (res.status === 403) {
+        throw new Error('Gemini API key is blocked or invalid. Please set a new VITE_GEMINI_API_KEY.');
+      }
+      errors.push(`${modelName}: ${res.status} ${errText}`);
     }
 
-    return res.json();
+    throw new Error(`Gemini API error: ${errors.join(' | ')}`);
   };
 
   useEffect(() => {
@@ -239,7 +232,11 @@ Rules:
       setAiMessage(`Showing data for ${finalParsed.country || countryQuery}.`);
     } catch (err) {
       console.error('AI trend error', err);
-      setAiMessage('An error occurred during the AI request.');
+      const message =
+        err instanceof Error && err.message.includes('Gemini API key')
+          ? 'AI key is blocked or invalid. Set a new VITE_GEMINI_API_KEY and redeploy.'
+          : 'An error occurred during the AI request.';
+      setAiMessage(message);
       setPriceTrend([]);
     } finally {
       setAiLoading(false);
