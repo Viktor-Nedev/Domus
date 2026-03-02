@@ -25,6 +25,33 @@ const safeParseJson = (text: string) => {
   }
 };
 
+const normalizeCountryText = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+const COUNTRY_ALIASES: Record<string, string> = {
+  'българия': 'Bulgaria',
+  'германия': 'Germany',
+  'испания': 'Spain',
+  'франция': 'France',
+  'италия': 'Italy',
+  'гърция': 'Greece',
+  'турция': 'Turkey',
+  'румъния': 'Romania',
+  'сърбия': 'Serbia',
+  'украйна': 'Ukraine',
+  'полша': 'Poland',
+  'унгария': 'Hungary',
+  'нидерландия': 'Netherlands',
+  'австрия': 'Austria',
+  'чехия': 'Czech Republic',
+  'словения': 'Slovenia',
+  'хърватия': 'Croatia',
+};
+
 const EmergencyHousingPage: React.FC = () => {
   const { profile } = useAuth();
   const [allShelters, setAllShelters] = useState<EmergencyShelter[]>([]);
@@ -186,49 +213,78 @@ const EmergencyHousingPage: React.FC = () => {
     }
 
     const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      setAiMessage('Missing Gemini API key. Set VITE_GEMINI_API_KEY in .env.');
-      return;
-    }
 
     setAiLoading(true);
     setAiMessage(null);
 
     try {
-      const countryPrompt = `
+      let targetCountry = '';
+      const knownCountries = Array.from(
+        new Set(allShelters.map((s) => s.country).filter(Boolean))
+      );
+
+      const extractCountryLocally = (query: string) => {
+        const normalizedQuery = normalizeCountryText(query);
+        const aliasMatch = COUNTRY_ALIASES[normalizedQuery];
+        if (aliasMatch) return aliasMatch;
+
+        const direct = knownCountries.find((country) => {
+          const normalizedCountry = normalizeCountryText(country);
+          return (
+            normalizedQuery === normalizedCountry ||
+            normalizedQuery.includes(normalizedCountry) ||
+            normalizedCountry.includes(normalizedQuery)
+          );
+        });
+        return direct || '';
+      };
+
+      if (geminiApiKey) {
+        const countryPrompt = `
 Extract country from user query. Return ONLY JSON:
 {"countries":["Country"]}
 User query: "${aiQuery}"`;
 
-      const countryData = await callGemini(countryPrompt, geminiApiKey, 256);
-      const countryText = countryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      let countryParsed: any = safeParseJson(countryText);
-      if (!countryParsed) {
-        const retryCountryData = await callGemini(`JSON only: {"countries":["Bulgaria"]}. Query: ${aiQuery}`, geminiApiKey, 256);
-        const retryCountryText = retryCountryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        countryParsed = safeParseJson(retryCountryText);
-      }
-      if (!countryParsed) {
-        console.error('Failed to parse Gemini country response', countryText);
-        setAiMessage('AI did not return a valid country. Please try again.');
-        return;
-      }
-
-      const countriesFromAi: string[] = Array.isArray(countryParsed?.countries)
-        ? countryParsed.countries
-        : [];
-
-      if (countriesFromAi.length === 0) {
-        setAiMessage('AI could not recognize a country. Please try again.');
-        return;
+        try {
+          const countryData = await callGemini(countryPrompt, geminiApiKey, 256);
+          const countryText = countryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+          let countryParsed: any = safeParseJson(countryText);
+          if (!countryParsed) {
+            const retryCountryData = await callGemini(`JSON only: {"countries":["Bulgaria"]}. Query: ${aiQuery}`, geminiApiKey, 256);
+            const retryCountryText = retryCountryData?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            countryParsed = safeParseJson(retryCountryText);
+          }
+          const countriesFromAi: string[] = Array.isArray(countryParsed?.countries)
+            ? countryParsed.countries
+            : [];
+          if (countriesFromAi.length > 0) {
+            targetCountry = countriesFromAi[0];
+          }
+        } catch (geminiError) {
+          console.error('Gemini country extraction failed, using local fallback:', geminiError);
+        }
       }
 
-      // Filter shelters by the first detected country
-      const targetCountry = countriesFromAi[0];
+      if (!targetCountry) {
+        targetCountry = extractCountryLocally(aiQuery) || aiQuery.trim();
+      }
+
       setSearchCountry(targetCountry);
 
+      const { data: propertyData } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('status', 'active')
+        .ilike('country', targetCountry)
+        .order('domus_score', { ascending: false })
+        .limit(6);
+
       const filteredShelters = allShelters.filter(
-        (shelter) => shelter.country.toLowerCase() === targetCountry.toLowerCase()
+        (shelter) => {
+          const a = normalizeCountryText(shelter.country);
+          const b = normalizeCountryText(targetCountry);
+          return a === b || a.includes(b) || b.includes(a);
+        }
       );
 
       // Prefer real shelters; if none, fall back to properties with coordinates in this country
@@ -259,14 +315,6 @@ User query: "${aiQuery}"`;
       }
 
       setDisplayedShelters(filteredShelters.length > 0 ? filteredShelters : fallbackShelters);
-
-      const { data: propertyData } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('status', 'active')
-        .ilike('country', targetCountry)
-        .order('domus_score', { ascending: false })
-        .limit(6);
 
       setRelatedProperties(propertyData || []);
       setAiMessage(

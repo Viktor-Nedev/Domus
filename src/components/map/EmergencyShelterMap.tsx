@@ -31,6 +31,35 @@ interface EmergencyShelterMapProps {
   onShelterSelect?: (shelter: EmergencyShelter) => void;
 }
 
+let leafletLoader: Promise<any> | null = null;
+
+const loadLeaflet = async () => {
+  if (typeof window === 'undefined') return null;
+  const existing = (window as any).L;
+  if (existing) return existing;
+  if (leafletLoader) return leafletLoader;
+
+  leafletLoader = new Promise((resolve, reject) => {
+    const doc = window.document;
+    if (!doc.querySelector('link[data-domus-leaflet="true"]')) {
+      const link = doc.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      link.setAttribute('data-domus-leaflet', 'true');
+      doc.head.appendChild(link);
+    }
+
+    const script = doc.createElement('script');
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.async = true;
+    script.onload = () => resolve((window as any).L);
+    script.onerror = reject;
+    doc.body.appendChild(script);
+  });
+
+  return leafletLoader;
+};
+
 export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
   shelters,
   onShelterSelect,
@@ -38,7 +67,14 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const fallbackMap = useRef<any>(null);
+  const fallbackMarkers = useRef<any[]>([]);
   const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
+  const parseCoord = (value: any) => {
+    if (value === null || value === undefined) return NaN;
+    const normalized = String(value).replace(',', '.');
+    return Number.parseFloat(normalized);
+  };
 
   // Initialize map
   useEffect(() => {
@@ -68,6 +104,42 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
     };
   }, [mapboxToken]);
 
+  // OSM fallback (Leaflet) when Mapbox token is not configured on hosting
+  useEffect(() => {
+    if (!mapContainer.current || mapboxToken) return;
+    let cancelled = false;
+
+    const initFallback = async () => {
+      try {
+        const L = await loadLeaflet();
+        if (!L || cancelled || !mapContainer.current) return;
+
+        if (fallbackMap.current) {
+          fallbackMap.current.remove();
+        }
+
+        fallbackMap.current = L.map(mapContainer.current).setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors',
+        }).addTo(fallbackMap.current);
+      } catch (error) {
+        console.error('Leaflet fallback init failed:', error);
+      }
+    };
+
+    initFallback();
+
+    return () => {
+      cancelled = true;
+      fallbackMarkers.current.forEach((marker) => marker.remove());
+      fallbackMarkers.current = [];
+      if (fallbackMap.current) {
+        fallbackMap.current.remove();
+        fallbackMap.current = null;
+      }
+    };
+  }, [mapboxToken]);
+
   // Update markers when shelters change
   useEffect(() => {
     if (!map.current || shelters.length === 0) return;
@@ -77,12 +149,6 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
     markers.current = [];
 
     // Add markers for each shelter
-    const parseCoord = (value: any) => {
-      if (value === null || value === undefined) return NaN;
-      const normalized = String(value).replace(',', '.');
-      return Number.parseFloat(normalized);
-    };
-
     shelters.forEach((shelter) => {
       const lng = parseCoord(shelter.longitude);
       const lat = parseCoord(shelter.latitude);
@@ -259,18 +325,39 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
     }
   }, [shelters, onShelterSelect]);
 
-  if (!mapboxToken) {
-    return (
-      <div
-        className="w-full h-full rounded-lg border-2 border-border shadow-xl flex items-center justify-center bg-muted/30 p-6 text-center"
-        style={{ minHeight: '680px' }}
-      >
-        <p className="text-sm text-muted-foreground">
-          Map disabled: set <code>VITE_MAPBOX_API_KEY</code> to display emergency shelters on the map.
-        </p>
-      </div>
-    );
-  }
+  // Update fallback markers
+  useEffect(() => {
+    if (mapboxToken || !fallbackMap.current) return;
+    const L = (window as any).L;
+    if (!L) return;
+
+    fallbackMarkers.current.forEach((marker) => marker.remove());
+    fallbackMarkers.current = [];
+
+    const points: [number, number][] = [];
+    shelters.forEach((shelter) => {
+      const lng = parseCoord(shelter.longitude);
+      const lat = parseCoord(shelter.latitude);
+      if (Number.isNaN(lng) || Number.isNaN(lat)) return;
+
+      const marker = L.marker([lat, lng]).addTo(fallbackMap.current);
+      marker.bindPopup(`
+        <div style="font-size:13px; line-height:1.4;">
+          <strong>${shelter.name}</strong><br/>
+          ${shelter.address || ''}<br/>
+          ${shelter.city || ''}${shelter.city && shelter.country ? ', ' : ''}${shelter.country || ''}
+        </div>
+      `);
+      marker.on('click', () => onShelterSelect?.(shelter));
+      fallbackMarkers.current.push(marker);
+      points.push([lat, lng]);
+    });
+
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points);
+      fallbackMap.current.fitBounds(bounds, { padding: [40, 40] });
+    }
+  }, [shelters, onShelterSelect, mapboxToken]);
 
   return (
     <div 
