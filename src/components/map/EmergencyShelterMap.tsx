@@ -163,17 +163,22 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
             ${shelter.city || ''}${shelter.city && shelter.country ? ', ' : ''}${shelter.country || ''}
           </div>
 
-          <!-- Capacity & Availability -->
-          <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 8px;">
-            <div style="padding: 8px; background:#F3F4F6; border-radius:6px; text-align:center;">
-              <div style="font-size:11px; color:#6B7280;">Capacity</div>
-              <div style="font-size:15px; font-weight:700; color:#111827;">${shelter.capacity ?? 'N/A'}</div>
+          ${(shelter.capacity ?? shelter.available_beds) !== null ? `
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-bottom: 8px;">
+              ${shelter.capacity !== null && shelter.capacity !== undefined ? `
+                <div style="padding: 8px; background:#F3F4F6; border-radius:6px; text-align:center;">
+                  <div style="font-size:11px; color:#6B7280;">Capacity</div>
+                  <div style="font-size:15px; font-weight:700; color:#111827;">${shelter.capacity}</div>
+                </div>
+              ` : ''}
+              ${shelter.available_beds !== null && shelter.available_beds !== undefined ? `
+                <div style="padding: 8px; background:#ECFDF3; border-radius:6px; text-align:center;">
+                  <div style="font-size:11px; color:#166534;">Available</div>
+                  <div style="font-size:15px; font-weight:700; color:#166534;">${shelter.available_beds}</div>
+                </div>
+              ` : ''}
             </div>
-            <div style="padding: 8px; background:#ECFDF3; border-radius:6px; text-align:center;">
-              <div style="font-size:11px; color:#166534;">Available</div>
-              <div style="font-size:15px; font-weight:700; color:#166534;">${shelter.available_beds ?? 'N/A'}</div>
-            </div>
-          </div>
+          ` : ''}
 
           <!-- Contact -->
           ${shelter.contact_phone ? `
