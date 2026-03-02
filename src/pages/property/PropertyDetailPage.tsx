@@ -20,6 +20,7 @@ const PropertyDetailPage: React.FC = () => {
   const [property, setProperty] = useState<Property | null>(null);
   const [isSaved, setIsSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const yellowCardClass = 'border-yellow-300/70 bg-yellow-50/70';
 
   useEffect(() => {
     if (id) {
@@ -117,9 +118,13 @@ const PropertyDetailPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-background to-yellow-100/40">
       <div className="container py-8">
-        <Button variant="ghost" onClick={() => navigate(-1)} className="mb-4">
+        <Button
+          variant="ghost"
+          onClick={() => navigate(-1)}
+          className="mb-4 text-yellow-900 hover:bg-yellow-100"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -185,7 +190,7 @@ const PropertyDetailPage: React.FC = () => {
             </div>
 
             {/* Key Info */}
-            <Card>
+            <Card className={yellowCardClass}>
               <CardHeader>
                 <CardTitle>Property Details</CardTitle>
               </CardHeader>
@@ -231,7 +236,7 @@ const PropertyDetailPage: React.FC = () => {
 
             {/* Property Location Map */}
           {property.latitude && property.longitude && (
-            <Card>
+            <Card className={yellowCardClass}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <MapPin className="h-5 w-5" />
@@ -255,7 +260,7 @@ const PropertyDetailPage: React.FC = () => {
           )}
 
           {/* Description */}
-            <Card>
+            <Card className={yellowCardClass}>
               <CardHeader>
                 <CardTitle>Description</CardTitle>
               </CardHeader>
@@ -265,7 +270,7 @@ const PropertyDetailPage: React.FC = () => {
             </Card>
 
             {/* Features */}
-            <Card>
+            <Card className={yellowCardClass}>
               <CardHeader>
                 <CardTitle>Features</CardTitle>
               </CardHeader>
@@ -284,7 +289,7 @@ const PropertyDetailPage: React.FC = () => {
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Contact Broker */}
-            <Card>
+            <Card className={yellowCardClass}>
               <CardHeader>
                 <CardTitle>Contact Broker</CardTitle>
               </CardHeader>
@@ -297,7 +302,7 @@ const PropertyDetailPage: React.FC = () => {
                     )}
                   </div>
                 )}
-                <Button className="w-full" onClick={handleMessageBroker}>
+                <Button className="w-full bg-yellow-500 hover:bg-yellow-600 text-yellow-950" onClick={handleMessageBroker}>
                   <MessageSquare className="mr-2 h-4 w-4" />
                   Message Broker
                 </Button>
@@ -306,7 +311,7 @@ const PropertyDetailPage: React.FC = () => {
 
             {/* DOMUS AI Analysis */}
             {property.domus_score > 0 && (
-              <Card>
+              <Card className={yellowCardClass}>
                 <CardHeader>
                   <CardTitle>DOMUS AI Analysis</CardTitle>
                 </CardHeader>

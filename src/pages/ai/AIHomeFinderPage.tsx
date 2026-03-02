@@ -28,12 +28,81 @@ interface AIQuestions {
   };
 }
 
+interface RankedRecommendation {
+  property: Property;
+  matchScore: number;
+}
+
+const normalizeText = (value: string) => value.trim().toLowerCase();
+
+const calculateLocationScore = (property: Property, location: string): number => {
+  const wanted = normalizeText(location);
+  if (!wanted) return 1;
+
+  const city = normalizeText(property.city || '');
+  const country = normalizeText(property.country || '');
+
+  if (!city && !country) return 0;
+  if (city === wanted || country === wanted) return 1;
+  if (city.includes(wanted) || country.includes(wanted)) return 0.85;
+  if (wanted.includes(city) || wanted.includes(country)) return 0.7;
+  return 0.2;
+};
+
+const calculateBedroomScore = (propertyBedrooms: number | undefined, wantedBedrooms: number): number => {
+  const current = propertyBedrooms || 0;
+  if (current === wantedBedrooms) return 1;
+  if (current > wantedBedrooms) return Math.max(0.75, 1 - (current - wantedBedrooms) * 0.08);
+  return Math.max(0.2, 1 - (wantedBedrooms - current) * 0.2);
+};
+
+const calculateLifestyleScore = (property: Property, answers: AIQuestions): number => {
+  let score = 0.5;
+
+  if (answers.lifestyle.quiet >= 7 && property.type === 'house') score += 0.15;
+  if (answers.lifestyle.greenSpaces >= 7 && (property.type === 'house' || property.type === 'land')) score += 0.12;
+  if (answers.lifestyle.nightlife >= 7 && property.type === 'apartment') score += 0.12;
+  if (answers.lifestyle.transport >= 7 && property.type === 'apartment') score += 0.11;
+  if (answers.lifestyle.schools >= 7 && (property.bedrooms || 0) >= 2) score += 0.1;
+
+  return Math.min(1, score);
+};
+
+const rankProperties = (properties: Property[], answers: AIQuestions): RankedRecommendation[] => {
+  return properties
+    .map((property) => {
+      const budgetDiff = Math.abs((property.price_eur || 0) - answers.budget);
+      const budgetScore = Math.max(0, 1 - budgetDiff / Math.max(answers.budget, 1));
+      const locationScore = calculateLocationScore(property, answers.location);
+      const typeScore =
+        answers.propertyType === 'any' ? 1 : property.type === answers.propertyType ? 1 : 0.25;
+      const bedroomScore = calculateBedroomScore(property.bedrooms, answers.bedrooms);
+      const domusScore = Math.max(0, Math.min(1, (property.domus_score || 0) / 100));
+      const lifestyleScore = calculateLifestyleScore(property, answers);
+
+      const totalScore =
+        budgetScore * 0.3 +
+        locationScore * 0.25 +
+        typeScore * 0.15 +
+        bedroomScore * 0.15 +
+        domusScore * 0.1 +
+        lifestyleScore * 0.05;
+
+      return {
+        property,
+        matchScore: Math.round(totalScore * 100),
+      };
+    })
+    .sort((a, b) => b.matchScore - a.matchScore);
+};
+
 const AIHomeFinderPage: React.FC = () => {
   const navigate = useNavigate();
   const actionButtonClass = 'bg-yellow-500 hover:bg-yellow-600 text-black';
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [recommendations, setRecommendations] = useState<Property[]>([]);
+  const [recommendations, setRecommendations] = useState<RankedRecommendation[]>([]);
+  const [usedClosestMatches, setUsedClosestMatches] = useState(false);
   const [aiExplanation, setAiExplanation] = useState('');
   
   const [answers, setAnswers] = useState<AIQuestions>({
@@ -63,44 +132,66 @@ const AIHomeFinderPage: React.FC = () => {
   const handleFindHome = async () => {
     setLoading(true);
     try {
-      // Query properties based on criteria
-      let query = supabase
+      // Query exact matches first
+      let exactQuery = supabase
         .from('properties')
         .select('*, broker:profiles!properties_broker_id_fkey(id, name, email, agency_name)')
         .eq('status', 'active')
         .lte('price_eur', answers.budget * 1.1);
 
       if (answers.location) {
-        query = query.or(`city.ilike.%${answers.location}%,country.ilike.%${answers.location}%`);
+        exactQuery = exactQuery.or(`city.ilike.%${answers.location}%,country.ilike.%${answers.location}%`);
       }
 
       if (answers.propertyType !== 'any') {
-        query = query.eq('type', answers.propertyType);
+        exactQuery = exactQuery.eq('type', answers.propertyType);
       }
 
       if (answers.bedrooms > 0) {
-        query = query.gte('bedrooms', answers.bedrooms);
+        exactQuery = exactQuery.gte('bedrooms', answers.bedrooms);
       }
 
-      query = query.order('domus_score', { ascending: false }).limit(6);
+      exactQuery = exactQuery.order('domus_score', { ascending: false }).limit(12);
 
-      const { data, error } = await query;
+      const { data: exactData, error: exactError } = await exactQuery;
 
-      if (error) throw error;
+      if (exactError) throw exactError;
 
-      setRecommendations(data || []);
+      const exactMatches = exactData || [];
+      let rankedMatches = rankProperties(exactMatches, answers).slice(0, 6);
+      let fallbackUsed = false;
 
-      // Generate AI explanation
-      const explanation = `Based on your preferences, I've found ${data?.length || 0} properties that match your criteria:\n\n` +
-        `✓ Budget: Up to €${answers.budget.toLocaleString()}\n` +
-        `✓ Location: ${answers.location || 'Any location'}\n` +
-        `✓ Property Type: ${answers.propertyType}\n` +
-        `✓ Bedrooms: ${answers.bedrooms}+\n` +
-        `✓ Purpose: ${answers.purpose.replace('_', ' ')}\n\n` +
-        `I've prioritized properties with high DOMUS scores that match your lifestyle preferences. ` +
-        `${answers.lifestyle.transport > 7 ? 'Properties near public transport are highlighted. ' : ''}` +
-        `${answers.lifestyle.quiet > 7 ? 'I focused on quieter neighborhoods. ' : ''}` +
-        `${answers.lifestyle.greenSpaces > 7 ? 'Properties near parks and green spaces are preferred. ' : ''}`;
+      if (rankedMatches.length === 0) {
+        fallbackUsed = true;
+        let broadQuery = supabase
+          .from('properties')
+          .select('*, broker:profiles!properties_broker_id_fkey(id, name, email, agency_name)')
+          .eq('status', 'active')
+          .lte('price_eur', answers.budget * 1.8)
+          .order('domus_score', { ascending: false })
+          .limit(120);
+
+        const { data: broadData, error: broadError } = await broadQuery;
+        if (broadError) throw broadError;
+
+        rankedMatches = rankProperties(broadData || [], answers).slice(0, 6);
+      }
+
+      setUsedClosestMatches(fallbackUsed);
+      setRecommendations(rankedMatches);
+
+      const explanation =
+        rankedMatches.length > 0
+          ? `${fallbackUsed
+              ? `I couldn't find exact matches, so I ranked the closest available properties by compatibility score.\n\n`
+              : `I found ${rankedMatches.length} properties that match your criteria.\n\n`}` +
+            `✓ Budget: Up to €${answers.budget.toLocaleString()}\n` +
+            `✓ Location: ${answers.location || 'Any location'}\n` +
+            `✓ Property Type: ${answers.propertyType}\n` +
+            `✓ Bedrooms: ${answers.bedrooms}+\n` +
+            `✓ Purpose: ${answers.purpose.replace('_', ' ')}\n\n` +
+            `Results are ranked by budget fit, location relevance, property type, bedrooms, DOMUS score, and lifestyle priorities.`
+          : `No suitable properties were found at the moment. Try increasing budget range or selecting "Any Type".`;
 
       setAiExplanation(explanation);
       setStep(5);
@@ -159,7 +250,7 @@ const AIHomeFinderPage: React.FC = () => {
                       value={[answers.budget]}
                       onValueChange={(value) => setAnswers({ ...answers, budget: value[0] })}
                       min={50000}
-                      max={500000}
+                      max={5000000}
                       step={10000}
                     />
                     <div className="text-center">
@@ -369,14 +460,16 @@ const AIHomeFinderPage: React.FC = () => {
               {/* Recommendations */}
               {recommendations.length > 0 ? (
                 <>
-                  <h2 className="text-2xl font-bold">Your Perfect Matches</h2>
+                  <h2 className="text-2xl font-bold">
+                    {usedClosestMatches ? 'Closest Matches To Your Needs' : 'Your Perfect Matches'}
+                  </h2>
                   <div className="grid md:grid-cols-2 gap-6">
-                    {recommendations.map((property, index) => (
-                      <div key={property.id} className="relative">
+                    {recommendations.map((recommendation, index) => (
+                      <div key={recommendation.property.id} className="relative">
                         <Badge className="absolute top-4 right-4 z-10">
-                          Match #{index + 1}
+                          {recommendation.matchScore}% Match
                         </Badge>
-                        <PropertyCard property={property} />
+                        <PropertyCard property={recommendation.property} />
                       </div>
                     ))}
                   </div>

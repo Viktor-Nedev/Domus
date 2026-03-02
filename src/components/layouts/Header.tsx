@@ -47,7 +47,12 @@ export const Header: React.FC = () => {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2">
-          <div className="text-2xl font-bold gradient-text">DOMUS</div>
+          <img
+            src="/domus_logo.png"
+            alt="DOMUS"
+            className="h-16 md:h-20 lg:h-[5rem] w-auto max-h-16 md:max-h-20 object-contain"
+          />
+          <span className="sr-only">DOMUS</span>
         </Link>
 
         {/* Desktop Navigation */}
