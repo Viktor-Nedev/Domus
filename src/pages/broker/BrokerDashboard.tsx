@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Eye, MessageSquare, TrendingUp } from 'lucide-react';
+import { Plus, Eye, MessageSquare, TrendingUp, Pencil } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PropertyCard } from '@/components/property/PropertyCard';
@@ -125,7 +125,15 @@ const BrokerDashboard: React.FC = () => {
           ) : properties.length > 0 ? (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
               {properties.map((property) => (
-                <PropertyCard key={property.id} property={property} />
+                <div key={property.id} className="space-y-3">
+                  <PropertyCard property={property} />
+                  <Link to={`/broker/edit-property/${property.id}`}>
+                    <Button variant="outline" className="w-full border-yellow-300 text-yellow-900 hover:bg-yellow-100">
+                      <Pencil className="mr-2 h-4 w-4" />
+                      Edit Property
+                    </Button>
+                  </Link>
+                </div>
               ))}
             </div>
           ) : (

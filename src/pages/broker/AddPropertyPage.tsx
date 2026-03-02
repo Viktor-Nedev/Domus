@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ImagePlus, Link2, Loader2, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { createProperty } from '@/db/api';
+import { createProperty, getProperty, updateProperty } from '@/db/api';
 import { supabase } from '@/db/supabase';
 import { SUPPORTED_CURRENCIES } from '@/types';
 
@@ -23,10 +23,13 @@ interface LocalPhoto {
 }
 
 const AddPropertyPage: React.FC = () => {
+  const { id: propertyId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const isEditing = Boolean(propertyId);
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(isEditing);
 
   // Form state
   const [title, setTitle] = useState('');
@@ -49,6 +52,68 @@ const AddPropertyPage: React.FC = () => {
   const [localPhotos, setLocalPhotos] = useState<LocalPhoto[]>([]);
   const [externalPhotoUrl, setExternalPhotoUrl] = useState('');
   const [externalPhotos, setExternalPhotos] = useState<string[]>([]);
+  const localPhotosRef = useRef<LocalPhoto[]>([]);
+
+  useEffect(() => {
+    const loadPropertyForEdit = async () => {
+      if (!isEditing || !propertyId) {
+        setInitialLoading(false);
+        return;
+      }
+
+      try {
+        const property = await getProperty(propertyId);
+        if (!property) {
+          toast.error('Property not found.');
+          navigate('/broker');
+          return;
+        }
+
+        if (user && property.broker_id !== user.id) {
+          toast.error('You can edit only your own properties.');
+          navigate('/broker');
+          return;
+        }
+
+        setTitle(property.title || '');
+        setDescription(property.description || '');
+        setType(property.type || 'apartment');
+        setPrice(property.price?.toString() || '');
+        setCurrency(property.currency || 'EUR');
+        setSizeSqm(property.size_sqm?.toString() || '');
+        setBedrooms(property.bedrooms?.toString() || '');
+        setBathrooms(property.bathrooms?.toString() || '');
+        setCountry(property.country || '');
+        setCity(property.city || '');
+        setAddress(property.address || '');
+        setLatitude(property.latitude?.toString() || '');
+        setLongitude(property.longitude?.toString() || '');
+        setParking(Boolean(property.parking));
+        setFurnished(Boolean(property.furnished));
+        setElevator(Boolean(property.elevator));
+        setBalcony(Boolean(property.balcony));
+        setExternalPhotos(Array.isArray(property.photos) ? property.photos : []);
+      } catch (error) {
+        console.error('Error loading property for edit:', error);
+        toast.error('Failed to load property details.');
+        navigate('/broker');
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    loadPropertyForEdit();
+  }, [isEditing, propertyId, user, navigate]);
+
+  useEffect(() => {
+    localPhotosRef.current = localPhotos;
+  }, [localPhotos]);
+
+  useEffect(() => {
+    return () => {
+      localPhotosRef.current.forEach((photo) => URL.revokeObjectURL(photo.previewUrl));
+    };
+  }, []);
 
   const handlePhotoFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -181,28 +246,46 @@ const AddPropertyPage: React.FC = () => {
         photos: allPhotoUrls,
       };
 
-      const property = await createProperty(propertyData, user.id);
+      if (isEditing && propertyId) {
+        const updated = await updateProperty(propertyId, propertyData);
+        if (updated) {
+          await supabase.functions.invoke('ai-deal-analyzer', {
+            body: { propertyId: updated.id },
+          });
 
-      if (property) {
-        // Trigger AI analysis
-        await supabase.functions.invoke('ai-deal-analyzer', {
-          body: { propertyId: property.id },
-        });
+          toast.success('Property updated successfully!');
+          navigate('/broker');
+        }
+      } else {
+        const created = await createProperty(propertyData, user.id);
+        if (created) {
+          await supabase.functions.invoke('ai-deal-analyzer', {
+            body: { propertyId: created.id },
+          });
 
-        toast.success('Property added successfully!');
-        navigate('/broker');
+          toast.success('Property added successfully!');
+          navigate('/broker');
+        }
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to add property');
+      toast.error(error.message || 'Failed to save property');
     } finally {
       setLoading(false);
     }
   };
 
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading property details...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-b from-yellow-50 via-background to-yellow-100/40">
       <div className="container py-8 max-w-4xl">
-        <h1 className="text-3xl font-bold mb-6">Add New Property</h1>
+        <h1 className="text-3xl font-bold mb-6">{isEditing ? 'Edit Property' : 'Add New Property'}</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Basic Information */}
@@ -458,9 +541,9 @@ const AddPropertyPage: React.FC = () => {
           </Card>
 
           {/* Features */}
-          <Card>
+          <Card className="border-yellow-300/70 bg-yellow-50/70">
             <CardHeader>
-              <CardTitle>Property Features</CardTitle>
+              <CardTitle className="text-yellow-900">Additional Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center space-x-2">
@@ -509,7 +592,7 @@ const AddPropertyPage: React.FC = () => {
                   Adding Property...
                 </>
               ) : (
-                'Add to DOMUS'
+                isEditing ? 'Save Changes' : 'Add to DOMUS'
               )}
             </Button>
           </div>

@@ -3,6 +3,29 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { EmergencyShelter } from '@/types/emergency';
 
+const OPEN_STREET_MAP_STYLE: mapboxgl.Style = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'osm',
+      type: 'raster',
+      source: 'osm',
+    },
+  ],
+};
+
 interface EmergencyShelterMapProps {
   shelters: EmergencyShelter[];
   onShelterSelect?: (shelter: EmergencyShelter) => void;
@@ -19,13 +42,15 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current || !mapboxToken) return;
+    if (!mapContainer.current || map.current) return;
 
-    mapboxgl.accessToken = mapboxToken;
+    if (mapboxToken) {
+      mapboxgl.accessToken = mapboxToken;
+    }
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: mapboxToken ? 'mapbox://styles/mapbox/streets-v12' : OPEN_STREET_MAP_STYLE,
       center: [0, 20],
       zoom: 2,
     });
@@ -328,19 +353,6 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       }
     }
   }, [shelters, onShelterSelect]);
-
-  if (!mapboxToken) {
-    return (
-      <div
-        className="w-full h-full rounded-lg border-2 border-border shadow-xl flex items-center justify-center bg-muted/30 p-6 text-center"
-        style={{ minHeight: '680px' }}
-      >
-        <p className="text-sm text-muted-foreground">
-          Emergency shelter map is unavailable because `VITE_MAPBOX_API_KEY` is not configured.
-        </p>
-      </div>
-    );
-  }
 
   return (
     <div 

@@ -85,6 +85,11 @@ const routes: RouteConfig[] = [
     element: <AddPropertyPage />
   },
   {
+    name: 'Edit Property',
+    path: '/broker/edit-property/:id',
+    element: <AddPropertyPage />
+  },
+  {
     name: 'Property Detail',
     path: '/property/:id',
     element: <PropertyDetailPage />

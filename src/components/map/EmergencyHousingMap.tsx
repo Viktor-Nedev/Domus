@@ -3,6 +3,29 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { Property } from '@/types';
 
+const OPEN_STREET_MAP_STYLE: mapboxgl.Style = {
+  version: 8,
+  sources: {
+    osm: {
+      type: 'raster',
+      tiles: [
+        'https://a.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://b.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        'https://c.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      ],
+      tileSize: 256,
+      attribution: '© OpenStreetMap contributors',
+    },
+  },
+  layers: [
+    {
+      id: 'osm',
+      type: 'raster',
+      source: 'osm',
+    },
+  ],
+};
+
 interface EmergencyHousingMapProps {
   properties: Property[];
   selectedProperty: Property | null;
@@ -22,15 +45,17 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
   const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
   useEffect(() => {
-    if (!mapContainer.current || !mapboxToken) return;
+    if (!mapContainer.current) return;
 
     // Initialize Mapbox
-    mapboxgl.accessToken = mapboxToken;
+    if (mapboxToken) {
+      mapboxgl.accessToken = mapboxToken;
+    }
 
     // Create map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: mapboxToken ? 'mapbox://styles/mapbox/streets-v12' : OPEN_STREET_MAP_STYLE,
       center: [23.3219, 42.6977], // Default to Sofia
       zoom: 10
     });
@@ -105,16 +130,6 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
       });
     }
   }, [properties, selectedProperty, onPropertySelect]);
-
-  if (!mapboxToken) {
-    return (
-      <div className={`${className} flex items-center justify-center border border-dashed border-muted-foreground/40 bg-muted/30 p-6 text-center`}>
-        <p className="text-sm text-muted-foreground">
-          Map is unavailable because `VITE_MAPBOX_API_KEY` is not configured.
-        </p>
-      </div>
-    );
-  }
 
   return <div ref={mapContainer} className={className} />;
 };
