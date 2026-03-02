@@ -42,7 +42,7 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
 
   // Initialize map
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current || map.current || !mapboxToken) return;
 
     if (mapboxToken) {
       mapboxgl.accessToken = mapboxToken;
@@ -258,6 +258,19 @@ export const EmergencyShelterMap: React.FC<EmergencyShelterMapProps> = ({
       }
     }
   }, [shelters, onShelterSelect]);
+
+  if (!mapboxToken) {
+    return (
+      <div
+        className="w-full h-full rounded-lg border-2 border-border shadow-xl flex items-center justify-center bg-muted/30 p-6 text-center"
+        style={{ minHeight: '680px' }}
+      >
+        <p className="text-sm text-muted-foreground">
+          Map disabled: set <code>VITE_MAPBOX_API_KEY</code> to display emergency shelters on the map.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div 

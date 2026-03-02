@@ -45,25 +45,19 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
   const mapboxToken = import.meta.env.VITE_MAPBOX_API_KEY;
 
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !mapboxToken) return;
 
-    // Initialize Mapbox
-    if (mapboxToken) {
-      mapboxgl.accessToken = mapboxToken;
-    }
+    mapboxgl.accessToken = mapboxToken;
 
-    // Create map
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: mapboxToken ? 'mapbox://styles/mapbox/streets-v12' : OPEN_STREET_MAP_STYLE,
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [23.3219, 42.6977], // Default to Sofia
       zoom: 10
     });
 
-    // Add navigation controls
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
-    // Cleanup
     return () => {
       if (map.current) {
         map.current.remove();
@@ -136,6 +130,16 @@ export const EmergencyHousingMap: React.FC<EmergencyHousingMapProps> = ({
       });
     }
   }, [properties, selectedProperty, onPropertySelect]);
+
+  if (!mapboxToken) {
+    return (
+      <div className={`${className} flex items-center justify-center border border-dashed border-muted-foreground/40 bg-muted/30 p-6 text-center`}>
+        <p className="text-sm text-muted-foreground">
+          Map disabled: set <code>VITE_MAPBOX_API_KEY</code> to view shelters on the map.
+        </p>
+      </div>
+    );
+  }
 
   return <div ref={mapContainer} className={className} />;
 };
